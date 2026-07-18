@@ -10,7 +10,8 @@ export type SettingsMap = Record<string, string>
  * Helper to extract LLM provider settings from SettingsMap.
  */
 export function getLLMSettings(settings: SettingsMap) {
-  const priorities = (settings.llm_providers || "openai,google,mistral,openai_compatible").split(",").map(p => p.trim()).filter(Boolean)
+  // Free Gemini first, then paid providers as automatic fallbacks.
+  const priorities = (settings.llm_providers || "google,openai,mistral,openai_compatible").split(",").map(p => p.trim()).filter(Boolean)
 
   const providers = priorities.map((provider) => {
     // Per-user key wins; otherwise fall back to a shared key from env

@@ -15,7 +15,7 @@ export const settingsFormSchema = z.object({
   openai_compatible_api_key: z.string().optional(),
   openai_compatible_model_name: z.string().optional(),
   openai_compatible_base_url: z.string().optional(),
-  llm_providers: z.string().default('openai,google,mistral,openai_compatible'),
+  llm_providers: z.string().default('google,openai,mistral,openai_compatible'),
   prompt_analyse_new_file: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
 })
