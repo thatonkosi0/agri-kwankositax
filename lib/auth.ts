@@ -162,9 +162,11 @@ export function isSubscriptionExpired(user: User) {
   return user.membershipExpiresAt && user.membershipExpiresAt < new Date()
 }
 
-export function isAiBalanceExhausted(user: User) {
-  if (config.selfHosted.isEnabled || user.membershipPlan === SELF_HOSTED_USER.membershipPlan) {
-    return false
-  }
-  return user.aiBalance <= 0
+export function isAiBalanceExhausted(_user: User) {
+  // This deployment is a private cooperative app, not a metered SaaS — AI
+  // analysis is unlimited and bounded only by the LLM provider's own quota.
+  return false
+  // Original SaaS gate (kept for reference):
+  // if (config.selfHosted.isEnabled || user.membershipPlan === SELF_HOSTED_USER.membershipPlan) return false
+  // return user.aiBalance <= 0
 }
