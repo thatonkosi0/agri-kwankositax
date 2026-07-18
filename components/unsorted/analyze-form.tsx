@@ -29,6 +29,7 @@ export default function AnalyzeForm({
   currencies,
   fields,
   settings,
+  onAnalyzingChange,
 }: {
   file: File
   categories: Category[]
@@ -36,6 +37,7 @@ export default function AnalyzeForm({
   currencies: Currency[]
   fields: Field[]
   settings: Record<string, string>
+  onAnalyzingChange?: (analyzing: boolean) => void
 }) {
   const { showNotification } = useNotification()
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -192,6 +194,7 @@ export default function AnalyzeForm({
 
   const startAnalyze = async () => {
     setIsAnalyzing(true)
+    onAnalyzingChange?.(true)
     setAnalyzeError("")
     try {
       setAnalyzeStep("Analyzing...")
@@ -214,6 +217,7 @@ export default function AnalyzeForm({
       setAnalyzeError(error instanceof Error ? error.message : "Analysis failed")
     } finally {
       setIsAnalyzing(false)
+      onAnalyzingChange?.(false)
       setAnalyzeStep("")
     }
   }

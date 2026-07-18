@@ -310,8 +310,19 @@ export default function LandingPage() {
         </div>
       </section>
 
-
-
+      <footer className="mt-auto py-6 px-8 border-t border-pink-100/70 bg-white/60">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+          <span>© {new Date().getFullYear()} Agri-KwankosiTax. All rights reserved.</span>
+          <div className="flex flex-wrap items-center gap-4">
+            <Link href="/docs/terms" className="hover:text-pink-600 transition-colors">
+              Terms
+            </Link>
+            <Link href="/docs/privacy_policy" className="hover:text-pink-600 transition-colors">
+              Privacy
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }
