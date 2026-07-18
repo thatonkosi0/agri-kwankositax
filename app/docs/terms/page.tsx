@@ -7,11 +7,6 @@ export default async function Terms() {
       <p className="bg-slate-50 p-4 rounded-lg border border-slate-200 mb-6">
         <strong className="text-slate-700">Effective Date:</strong> April 22, 2025
         <br />
-        <strong className="text-slate-700">Service:</strong>{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
-        </a>
-        <br />
         <strong className="text-slate-700">Contact:</strong>{" "}
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}

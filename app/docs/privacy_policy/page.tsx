@@ -19,20 +19,11 @@ export default async function PrivacyPolicy() {
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
-        <br />
-        <strong className="text-slate-700">Domain</strong>:{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
-        </a>
       </p>
 
       <p className="text-slate-700 mb-6 leading-relaxed">
         Agri-KwankosiTax (&quot;we&quot;, &quot;our&quot;, &quot;us&quot;) is committed to protecting your privacy. This
-        Privacy Policy describes how we collect, use, store, and protect your personal data when you use our services at{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          taxhacker.app
-        </a>
-        .
+        Privacy Policy describes how we collect, use, store, and protect your personal data when you use our services.
       </p>
 
       <hr className="my-8 border-slate-200" />

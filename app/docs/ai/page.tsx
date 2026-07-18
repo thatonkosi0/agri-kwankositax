@@ -12,11 +12,6 @@ export default async function AI() {
         <a href={`mailto:${config.app.supportEmail}`} className="text-blue-600 hover:text-blue-800">
           {config.app.supportEmail}
         </a>
-        <br />
-        <strong className="text-slate-700">Domain</strong>:{" "}
-        <a href="https://taxhacker.app" className="text-blue-600 hover:text-blue-800">
-          https://taxhacker.app
-        </a>
       </p>
 
       <p className="text-gray-700 leading-relaxed mb-6">
