@@ -1,7 +1,14 @@
 import { Button } from "@/components/ui/button"
+import { getCurrentUser } from "@/lib/auth"
+import { redirect } from "next/navigation"
 import { resetFieldsAndCategories, resetLLMSettings } from "./actions"
 
-export default function DangerSettingsPage() {
+export default async function DangerSettingsPage() {
+  const user = await getCurrentUser()
+  if (!user.isAdmin) {
+    redirect("/settings")
+  }
+
   return (
     <div className="container">
       <h1 className="text-2xl font-bold mb-2 text-red-500">The Danger Zone</h1>

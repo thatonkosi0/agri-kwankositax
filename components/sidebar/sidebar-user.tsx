@@ -78,14 +78,6 @@ export default function SidebarUser({ profile, isSelfHosted }: { profile: UserPr
               Settings
             </Link>
           </DropdownMenuItem>
-          {!isSelfHosted && (
-            <DropdownMenuItem asChild>
-              <Link href="/api/stripe/portal" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Billing
-              </Link>
-            </DropdownMenuItem>
-          )}
         </DropdownMenuGroup>
         {!isSelfHosted && (
           <>

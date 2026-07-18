@@ -45,17 +45,23 @@ const settingsCategories = [
     title: "Backups",
     href: "/settings/backups",
   },
+]
+
+// Only shown to admins.
+const adminOnlyCategories = [
   {
     title: "Danger Zone",
     href: "/settings/danger",
+  },
+  {
+    title: "Users",
+    href: "/settings/users",
   },
 ]
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  const navItems = user.isAdmin
-    ? [...settingsCategories, { title: "Users", href: "/settings/users" }]
-    : settingsCategories
+  const navItems = user.isAdmin ? [...settingsCategories, ...adminOnlyCategories] : settingsCategories
 
   return (
     <>
