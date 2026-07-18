@@ -49,13 +49,42 @@ export default function AnalyzeForm({
   const [pendingFormData, setPendingFormData] = useState<FormData | null>(null)
 
   const fieldMap = useMemo(() => {
-    return fields.reduce(
+    const map = fields.reduce(
       (acc, field) => {
         acc[field.code] = field
         return acc
       },
       {} as Record<string, Field>
     )
+    // Fallbacks so the form still renders if a built-in field was removed
+    // (the form reads fieldMap.<code>.name / .isRequired / .isVisibleInAnalysis).
+    const BUILTIN_LABELS: Record<string, string> = {
+      name: "Name",
+      merchant: "Merchant",
+      description: "Description",
+      total: "Total",
+      currencyCode: "Currency",
+      type: "Type",
+      issuedAt: "Issued At",
+      categoryCode: "Category",
+      projectCode: "Project",
+      note: "Note",
+      text: "Extracted Text",
+    }
+    for (const [code, name] of Object.entries(BUILTIN_LABELS)) {
+      if (!map[code]) {
+        map[code] = {
+          code,
+          name,
+          type: "string",
+          isVisibleInList: false,
+          isVisibleInAnalysis: true,
+          isRequired: false,
+          isExtra: false,
+        } as unknown as Field
+      }
+    }
+    return map
   }, [fields])
 
   const extraFields = useMemo(() => fields.filter((field) => field.isExtra), [fields])

@@ -68,23 +68,6 @@ export async function WelcomeWidget() {
             recommend giving the results to a professional tax advisor for review when filing your taxes!
           </p>
         </CardDescription>
-        <div className="mt-2">
-          <Link href="https://github.com/vas3k/TaxHacker" className="text-blue-500 hover:underline">
-            Source Code
-          </Link>
-          <span className="mx-2">|</span>
-          <Link href="https://github.com/vas3k/TaxHacker/issues" className="text-blue-500 hover:underline">
-            Request New Feature
-          </Link>
-          <span className="mx-2">|</span>
-          <Link href="https://github.com/vas3k/TaxHacker/issues" className="text-blue-500 hover:underline">
-            Report a Bug
-          </Link>
-          <span className="mx-2">|</span>
-          <Link href="mailto:me@vas3k.ru" className="text-blue-500 hover:underline">
-            Contact the Author
-          </Link>
-        </div>
         <div className="flex flex-wrap gap-2 mt-8">
           {settings.openai_api_key === "" && (
             <Link href="/settings/llm">

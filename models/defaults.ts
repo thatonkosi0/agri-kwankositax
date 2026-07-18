@@ -447,58 +447,34 @@ export const DEFAULT_FIELDS = [
 ]
 
 export async function createUserDefaults(userId: string) {
-  // Default projects
-  for (const project of DEFAULT_PROJECTS) {
-    await prisma.project.upsert({
-      where: { userId_code: { code: project.code, userId } },
-      update: { name: project.name, color: project.color, llm_prompt: project.llm_prompt },
-      create: { ...project, userId },
-    })
-  }
+  // Bulk-insert defaults in a handful of queries rather than ~180 sequential
+  // round-trips. The old per-row upsert loop could exceed the serverless
+  // function timeout mid-seed (leaving a user with no fields/settings).
+  // skipDuplicates makes this idempotent against the (userId, code) unique keys.
+  await prisma.project.createMany({
+    data: DEFAULT_PROJECTS.map((project) => ({ ...project, userId })),
+    skipDuplicates: true,
+  })
 
-  // Default categories
-  for (const category of DEFAULT_CATEGORIES) {
-    await prisma.category.upsert({
-      where: { userId_code: { code: category.code, userId } },
-      update: { name: category.name, color: category.color, llm_prompt: category.llm_prompt },
-      create: { ...category, userId },
-    })
-  }
+  await prisma.category.createMany({
+    data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId })),
+    skipDuplicates: true,
+  })
 
-  // Default currencies
-  for (const currency of DEFAULT_CURRENCIES) {
-    await prisma.currency.upsert({
-      where: { userId_code: { code: currency.code, userId } },
-      update: { name: currency.name },
-      create: { ...currency, userId },
-    })
-  }
+  await prisma.currency.createMany({
+    data: DEFAULT_CURRENCIES.map((currency) => ({ ...currency, userId })),
+    skipDuplicates: true,
+  })
 
-  // Default fields
-  for (const field of DEFAULT_FIELDS) {
-    await prisma.field.upsert({
-      where: { userId_code: { code: field.code, userId } },
-      update: {
-        name: field.name,
-        type: field.type,
-        llm_prompt: field.llm_prompt,
-        isVisibleInList: field.isVisibleInList,
-        isVisibleInAnalysis: field.isVisibleInAnalysis,
-        isRequired: field.isRequired,
-        isExtra: field.isExtra,
-      },
-      create: { ...field, userId },
-    })
-  }
+  await prisma.field.createMany({
+    data: DEFAULT_FIELDS.map((field) => ({ ...field, userId })),
+    skipDuplicates: true,
+  })
 
-  // Default settings
-  for (const setting of DEFAULT_SETTINGS) {
-    await prisma.setting.upsert({
-      where: { userId_code: { code: setting.code, userId } },
-      update: { name: setting.name, description: setting.description, value: setting.value },
-      create: { ...setting, userId },
-    })
-  }
+  await prisma.setting.createMany({
+    data: DEFAULT_SETTINGS.map((setting) => ({ ...setting, userId })),
+    skipDuplicates: true,
+  })
 }
 
 export async function isDatabaseEmpty(userId: string) {
