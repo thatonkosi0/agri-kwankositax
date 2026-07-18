@@ -49,7 +49,7 @@ export default function LandingPage() {
             </p>
             <div className="flex gap-4 justify-center text-sm md:text-lg">
               <Link
-                href="#start"
+                href="/enter"
                 className="px-8 py-4 bg-gradient-to-r from-pink-600 to-indigo-600 text-white font-bold rounded-full hover:from-pink-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-110 border-2 border-white/20"
               >
                 Get Started ✨
@@ -310,91 +310,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Deployment Options */}
-      <section
-        id="start"
-        className="py-20 px-8 bg-gradient-to-br from-white via-pink-50/20 to-indigo-50/20 scroll-mt-20 relative"
-      >
-        <div className="absolute inset-0 bg-gradient-to-r from-pink-100/20 to-indigo-100/20" />
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
-              Choose Your Version of Agri-KwankosiTax
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-16">
-            {/* Self-Hosted Version */}
-            <div className="bg-gradient-to-br from-white via-violet-50/50 to-indigo-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-violet-200 to-indigo-200 hover:shadow-2xl transition-all duration-500 group">
-              <div className="inline-block px-4 py-2 rounded-full bg-gradient-to-r from-violet-500 to-indigo-600 text-white text-sm font-bold mb-6 shadow-lg">
-                🏠 Use Your Own Server
-              </div>
-              <h3 className="text-2xl font-bold mb-4">
-                <ColoredText>Self-Hosted Edition</ColoredText>
-              </h3>
-              <ul className="space-y-3 text-gray-700 mb-8">
-                <li className="flex items-center">
-                  <span className="text-indigo-600 mr-3 text-lg">🆓</span>
-                  Free and Open Source
-                </li>
-                <li className="flex items-center">
-                  <span className="text-indigo-600 mr-3 text-lg">🔒</span>
-                  Complete control over your data
-                </li>
-                <li className="flex items-center">
-                  <span className="text-indigo-600 mr-3 text-lg">🏗️</span>
-                  Deploy at your own infrastructure or home server
-                </li>
-                <li className="flex items-center">
-                  <span className="text-indigo-600 mr-3 text-lg">🔑</span>
-                  Bring your own keys (OpenAI, Gemini, Mistral, etc.)
-                </li>
-              </ul>
-              <Link
-                href="https://github.com/vas3k/TaxHacker"
-                target="_blank"
-                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-violet-600 to-indigo-600 text-white font-bold rounded-full hover:from-violet-700 hover:to-indigo-700 transition-all duration-300 shadow-xl hover:shadow-2xl hover:scale-110"
-              >
-                Github + Docker Compose 🐳
-              </Link>
-            </div>
-
-            {/* Cloud Version */}
-            <div className="bg-gradient-to-br from-white via-pink-50/50 to-purple-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-pink-200 to-purple-200 hover:shadow-2xl transition-all duration-500 group relative">
-              <div className="inline-block px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 text-white text-sm font-bold mb-6 shadow-lg">
-                ☁️ We Host It For You
-              </div>
-              <h3 className="text-2xl font-bold mb-4">
-                <ColoredText>Cloud Edition</ColoredText>
-              </h3>
-              <ul className="space-y-3 text-gray-700 mb-8">
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🎯</span>
-                  SaaS version if you don't want to hassle with own servers and deployments
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🤖</span>
-                  We provide you with AI keys and storage
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">💳</span>
-                  Yearly subscription plans. No hidden fees
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🚀</span>
-                  Automatic updates and new features
-                </li>
-              </ul>
-              <button
-                type="button"
-                disabled
-                className="block w-full text-center px-6 py-4 bg-gradient-to-r from-gray-300 to-gray-400 text-gray-700 font-bold rounded-full shadow-xl opacity-80 cursor-not-allowed"
-              >
-                Temporarily unavailable
-              </button>
-            </div>
-          </div>
-        </div>
-      </section>
 
 
     </div>
