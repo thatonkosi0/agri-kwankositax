@@ -34,15 +34,22 @@ export function UploadButton({ children, ...props }: { children: React.ReactNode
       files.forEach((file) => formData.append("files", file))
 
       startTransition(async () => {
-        const result = await uploadFilesAction(formData)
-        if (result.success) {
-          showNotification({ code: "sidebar.unsorted", message: "new" })
-          setTimeout(() => showNotification({ code: "sidebar.unsorted", message: "" }), 3000)
-          router.push("/unsorted")
-        } else {
-          setUploadError(result.error ? result.error : "Something went wrong...")
+        try {
+          const result = await uploadFilesAction(formData)
+          if (result.success) {
+            showNotification({ code: "sidebar.unsorted", message: "new" })
+            setTimeout(() => showNotification({ code: "sidebar.unsorted", message: "" }), 3000)
+            router.push("/unsorted")
+          } else {
+            setUploadError(result.error ? result.error : "Something went wrong...")
+          }
+        } catch (error) {
+          setUploadError(
+            error instanceof Error ? error.message : "Upload failed — the file may be too large (max ~4MB on the server)."
+          )
+        } finally {
+          setIsUploading(false)
         }
-        setIsUploading(false)
       })
     },
     [router, showNotification]
