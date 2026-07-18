@@ -98,7 +98,7 @@ export const EXPORT_AND_IMPORT_FIELD_MAP: Record<string, ExportImportFieldSettin
       if (!value) {
         return null
       }
-      const project = await getProjectByCode(userId, value)
+      const project = await getProjectByCode(value)
       return project?.name
     },
     import: async function (userId: string, value: string) {

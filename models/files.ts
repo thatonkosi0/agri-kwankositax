@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { fullKeyForFile } from "@/lib/files"
 import { getStorage } from "@/lib/storage"
 import { cache } from "react"
+import { getAssignedProjectCodes } from "./projects"
 import { getTransactionById } from "./transactions"
 import { getUserById } from "./users"
 
@@ -32,6 +33,26 @@ export const getFileById = cache(async (id: string, userId: string) => {
   return await prisma.file.findFirst({
     where: { id, userId },
   })
+})
+
+// Returns the file if the user may view it: they own it, they're an admin, or it
+// is attached to a transaction in a project they're assigned to (shared ledger).
+export const getVisibleFileById = cache(async (id: string, userId: string) => {
+  const file = await prisma.file.findUnique({ where: { id } })
+  if (!file) return null
+  if (file.userId === userId) return file
+
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  if (user?.isAdmin) return file
+
+  const assignedCodes = await getAssignedProjectCodes(userId)
+  if (assignedCodes.length === 0) return null
+
+  const tx = await prisma.transaction.findFirst({
+    where: { files: { array_contains: [id] }, projectCode: { in: assignedCodes } },
+    select: { id: true },
+  })
+  return tx ? file : null
 })
 
 export const getFilesByTransactionId = cache(async (id: string, userId: string) => {

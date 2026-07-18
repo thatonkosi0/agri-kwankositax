@@ -2,7 +2,8 @@ import { getCurrentUser } from "@/lib/auth"
 import { fileExists, fullKeyForFile } from "@/lib/files"
 import { getStorage } from "@/lib/storage"
 import { encodeFilename } from "@/lib/utils"
-import { getFileById } from "@/models/files"
+import { getVisibleFileById } from "@/models/files"
+import { getUserById } from "@/models/users"
 import { NextResponse } from "next/server"
 
 export async function GET(request: Request, { params }: { params: Promise<{ fileId: string }> }) {
@@ -14,15 +15,19 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   }
 
   try {
-    // Find file in database
-    const file = await getFileById(fileId, user.id)
-
-    if (!file || file.userId !== user.id) {
-      return new NextResponse("File not found or does not belong to the user", { status: 404 })
+    // Find file (own, admin, or shared via an assigned project)
+    const file = await getVisibleFileById(fileId, user.id)
+    if (!file) {
+      return new NextResponse("File not found or not accessible", { status: 404 })
     }
 
-    // Check if file exists
-    const fileKey = fullKeyForFile(user, file)
+    // Storage is scoped to the file's OWNER, which may be another member.
+    const owner = file.userId === user.id ? user : await getUserById(file.userId)
+    if (!owner) {
+      return new NextResponse("File owner not found", { status: 404 })
+    }
+
+    const fileKey = fullKeyForFile(owner, file)
     const isFileExists = await fileExists(fileKey)
     if (!isFileExists) {
       return new NextResponse(`File not found in storage: ${file.path}`, { status: 404 })

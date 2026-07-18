@@ -23,6 +23,7 @@ model User {
   settings            Setting[]
   categories          Category[]
   projects            Project[]
+  projectMemberships  ProjectMember[]
   fields              Field[]
   files               File[]
   currencies          Currency[]
@@ -123,19 +124,34 @@ model Category {
   @@map("categories")
 }
 
+// Org-level (created by admins). Members are assigned via ProjectMember, and
+// everyone assigned to a project can see all of its transactions/files.
 model Project {
-  id           String        @id @default(uuid()) @db.Uuid
-  userId       String        @map("user_id") @db.Uuid
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  code         String
+  id           String          @id @default(uuid()) @db.Uuid
+  userId       String          @map("user_id") @db.Uuid
+  user         User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  code         String          @unique
   name         String
-  color        String        @default("#000000")
+  color        String          @default("#000000")
   llm_prompt   String?
   transactions Transaction[]
-  createdAt    DateTime      @default(now()) @map("created_at")
+  members      ProjectMember[]
+  createdAt    DateTime        @default(now()) @map("created_at")
 
-  @@unique([userId, code])
   @@map("projects")
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  projectId String   @map("project_id") @db.Uuid
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([projectId, userId])
+  @@index([userId])
+  @@map("project_members")
 }
 
 model Field {
@@ -191,7 +207,7 @@ model Transaction {
   extra                 Json?
   category              Category? @relation(fields: [categoryCode, userId], references: [code, userId])
   categoryCode          String?   @map("category_code")
-  project               Project?  @relation(fields: [projectCode, userId], references: [code, userId])
+  project               Project?  @relation(fields: [projectCode], references: [code])
   projectCode           String?   @map("project_code")
   issuedAt              DateTime? @map("issued_at")
   createdAt             DateTime  @default(now()) @map("created_at")

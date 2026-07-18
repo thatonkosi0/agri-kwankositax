@@ -16,7 +16,7 @@ const settingsCategories = [
   { title: "LLM settings", href: "/settings/llm", adminOnly: true },
   { title: "Fields", href: "/settings/fields", adminOnly: true },
   { title: "Categories", href: "/settings/categories", adminOnly: true },
-  { title: "Projects", href: "/settings/projects" },
+  { title: "Projects", href: "/settings/projects", adminOnly: true },
   { title: "Currencies", href: "/settings/currencies" },
   { title: "Backups", href: "/settings/backups", adminOnly: true },
   { title: "Danger Zone", href: "/settings/danger", adminOnly: true },

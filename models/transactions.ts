@@ -3,6 +3,21 @@ import { Field, Prisma, Transaction } from "@/prisma/client"
 import { cache } from "react"
 import { getFields } from "./fields"
 import { deleteFile } from "./files"
+import { getAssignedProjectCodes } from "./projects"
+
+// Read visibility for transactions: admins see everything; members see their own
+// transactions plus any transaction in a project they're assigned to (shared ledger).
+export const getTransactionVisibility = cache(async (userId: string): Promise<Prisma.TransactionWhereInput> => {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isAdmin: true } })
+  if (user?.isAdmin) {
+    return {}
+  }
+  const assignedCodes = await getAssignedProjectCodes(userId)
+  if (assignedCodes.length === 0) {
+    return { userId }
+  }
+  return { OR: [{ userId }, { projectCode: { in: assignedCodes } }] }
+})
 
 export type TransactionData = {
   name?: string | null
@@ -49,18 +64,21 @@ export const getTransactions = cache(
     transactions: Transaction[]
     total: number
   }> => {
-    const where: Prisma.TransactionWhereInput = { userId }
+    const where: Prisma.TransactionWhereInput = {}
+    const and: Prisma.TransactionWhereInput[] = [await getTransactionVisibility(userId)]
     let orderBy: Prisma.TransactionOrderByWithRelationInput = { issuedAt: "desc" }
 
     if (filters) {
       if (filters.search) {
-        where.OR = [
-          { name: { contains: filters.search, mode: "insensitive" } },
-          { merchant: { contains: filters.search, mode: "insensitive" } },
-          { description: { contains: filters.search, mode: "insensitive" } },
-          { note: { contains: filters.search, mode: "insensitive" } },
-          { text: { contains: filters.search, mode: "insensitive" } },
-        ]
+        and.push({
+          OR: [
+            { name: { contains: filters.search, mode: "insensitive" } },
+            { merchant: { contains: filters.search, mode: "insensitive" } },
+            { description: { contains: filters.search, mode: "insensitive" } },
+            { note: { contains: filters.search, mode: "insensitive" } },
+            { text: { contains: filters.search, mode: "insensitive" } },
+          ],
+        })
       }
 
       if (filters.dateFrom || filters.dateTo) {
@@ -88,6 +106,8 @@ export const getTransactions = cache(
         orderBy = { [field]: isDesc ? "desc" : "asc" }
       }
     }
+
+    where.AND = and
 
     if (pagination) {
       const total = await prisma.transaction.count({ where })
@@ -117,8 +137,9 @@ export const getTransactions = cache(
 )
 
 export const getTransactionById = cache(async (id: string, userId: string): Promise<Transaction | null> => {
-  return await prisma.transaction.findUnique({
-    where: { id, userId },
+  const visibility = await getTransactionVisibility(userId)
+  return await prisma.transaction.findFirst({
+    where: { AND: [{ id }, visibility] },
     include: {
       category: true,
       project: true,

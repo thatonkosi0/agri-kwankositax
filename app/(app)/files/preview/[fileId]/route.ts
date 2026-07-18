@@ -3,7 +3,8 @@ import { fileExists, fullKeyForFile } from "@/lib/files"
 import { generateFilePreviews } from "@/lib/previews/generate"
 import { getStorage } from "@/lib/storage"
 import { encodeFilename } from "@/lib/utils"
-import { getFileById } from "@/models/files"
+import { getVisibleFileById } from "@/models/files"
+import { getUserById } from "@/models/users"
 import { NextResponse } from "next/server"
 
 // PDF rendering can be slow; allow up to 60s on serverless hosts.
@@ -21,22 +22,26 @@ export async function GET(request: Request, { params }: { params: Promise<{ file
   const page = parseInt(url.searchParams.get("page") || "1", 10)
 
   try {
-    // Find file in database
-    const file = await getFileById(fileId, user.id)
-
-    if (!file || file.userId !== user.id) {
-      return new NextResponse("File not found or does not belong to the user", { status: 404 })
+    // Find file (own, admin, or shared via an assigned project)
+    const file = await getVisibleFileById(fileId, user.id)
+    if (!file) {
+      return new NextResponse("File not found or not accessible", { status: 404 })
     }
 
-    // Check if file exists in storage
-    const fileKey = fullKeyForFile(user, file)
+    // Storage + previews are scoped to the file's OWNER (possibly another member).
+    const owner = file.userId === user.id ? user : await getUserById(file.userId)
+    if (!owner) {
+      return new NextResponse("File owner not found", { status: 404 })
+    }
+
+    const fileKey = fullKeyForFile(owner, file)
     const isFileExists = await fileExists(fileKey)
     if (!isFileExists) {
       return new NextResponse(`File not found in storage: ${file.path}`, { status: 404 })
     }
 
-    // Generate previews
-    const { contentType, previews } = await generateFilePreviews(user, fileKey, file.mimetype)
+    // Generate previews (in the owner's scope so they're shared across members)
+    const { contentType, previews } = await generateFilePreviews(owner, fileKey, file.mimetype)
     if (page > previews.length) {
       return new NextResponse("Page not found", { status: 404 })
     }

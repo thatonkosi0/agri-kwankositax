@@ -46,7 +46,7 @@ export const DEFAULT_SETTINGS = [
     code: "default_project",
     name: "Default Project",
     description: "",
-    value: "personal",
+    value: "",
   },
   {
     code: "default_type",
@@ -461,10 +461,7 @@ export async function createUserDefaults(userId: string) {
   // round-trips. The old per-row upsert loop could exceed the serverless
   // function timeout mid-seed (leaving a user with no fields/settings).
   // skipDuplicates makes this idempotent against the (userId, code) unique keys.
-  await prisma.project.createMany({
-    data: DEFAULT_PROJECTS.map((project) => ({ ...project, userId })),
-    skipDuplicates: true,
-  })
+  // Projects are org-level (created by admins), so they are not seeded per user.
 
   await prisma.category.createMany({
     data: DEFAULT_CATEGORIES.map((category) => ({ ...category, userId })),

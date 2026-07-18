@@ -15,7 +15,7 @@ import { codeFromName, randomHexColor } from "@/lib/utils"
 import { createCategory, deleteCategory, updateCategory } from "@/models/categories"
 import { createCurrency, deleteCurrency, updateCurrency } from "@/models/currencies"
 import { createField, deleteField, updateField } from "@/models/fields"
-import { createProject, deleteProject, updateProject } from "@/models/projects"
+import { createProject, deleteProject, setProjectMembers, updateProject } from "@/models/projects"
 import { SettingsMap, updateSettings } from "@/models/settings"
 import { updateUser } from "@/models/users"
 import { Prisma, User } from "@/prisma/client"
@@ -98,32 +98,48 @@ export async function saveProfileAction(
   return { success: true }
 }
 
-export async function addProjectAction(userId: string, data: Prisma.ProjectCreateInput) {
-  const validatedForm = projectFormSchema.safeParse(data)
-
-  if (!validatedForm.success) {
-    return { success: false, error: validatedForm.error.message }
+// Projects are org-level and only admins may create/edit/delete them.
+async function requireAdminForProjects() {
+  const user = await getCurrentUser()
+  if (!user.isAdmin) {
+    return null
   }
-
-  const project = await createProject(userId, {
-    code: codeFromName(validatedForm.data.name),
-    name: validatedForm.data.name,
-    llm_prompt: validatedForm.data.llm_prompt || null,
-    color: validatedForm.data.color || randomHexColor(),
-  })
-  revalidatePath("/settings/projects")
-
-  return { success: true, project }
+  return user
 }
 
-export async function editProjectAction(userId: string, code: string, data: Prisma.ProjectUpdateInput) {
-  const validatedForm = projectFormSchema.safeParse(data)
+export async function addProjectAction(data: Prisma.ProjectCreateInput) {
+  const admin = await requireAdminForProjects()
+  if (!admin) return { success: false, error: "Only admins can create projects" }
 
+  const validatedForm = projectFormSchema.safeParse(data)
   if (!validatedForm.success) {
     return { success: false, error: validatedForm.error.message }
   }
 
-  const project = await updateProject(userId, code, {
+  try {
+    const project = await createProject(admin.id, {
+      code: codeFromName(validatedForm.data.name),
+      name: validatedForm.data.name,
+      llm_prompt: validatedForm.data.llm_prompt || null,
+      color: validatedForm.data.color || randomHexColor(),
+    })
+    revalidatePath("/settings/projects")
+    return { success: true, project }
+  } catch {
+    return { success: false, error: "A project with this name already exists" }
+  }
+}
+
+export async function editProjectAction(code: string, data: Prisma.ProjectUpdateInput) {
+  const admin = await requireAdminForProjects()
+  if (!admin) return { success: false, error: "Only admins can edit projects" }
+
+  const validatedForm = projectFormSchema.safeParse(data)
+  if (!validatedForm.success) {
+    return { success: false, error: validatedForm.error.message }
+  }
+
+  const project = await updateProject(code, {
     name: validatedForm.data.name,
     llm_prompt: validatedForm.data.llm_prompt,
     color: validatedForm.data.color || "",
@@ -133,11 +149,27 @@ export async function editProjectAction(userId: string, code: string, data: Pris
   return { success: true, project }
 }
 
-export async function deleteProjectAction(userId: string, code: string) {
+export async function deleteProjectAction(code: string) {
+  const admin = await requireAdminForProjects()
+  if (!admin) return { success: false, error: "Only admins can delete projects" }
+
   try {
-    await deleteProject(userId, code)
+    await deleteProject(code)
   } catch (error) {
     return { success: false, error: "Failed to delete project" + error }
+  }
+  revalidatePath("/settings/projects")
+  return { success: true }
+}
+
+export async function setProjectMembersAction(projectId: string, userIds: string[]) {
+  const admin = await requireAdminForProjects()
+  if (!admin) return { success: false, error: "Only admins can assign project members" }
+
+  try {
+    await setProjectMembers(projectId, userIds)
+  } catch (error) {
+    return { success: false, error: "Failed to update members: " + error }
   }
   revalidatePath("/settings/projects")
   return { success: true }
