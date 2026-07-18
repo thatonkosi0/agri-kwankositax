@@ -1,5 +1,4 @@
 import { ColoredText } from "@/components/ui/colored-text"
-import config from "@/lib/config"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -122,6 +121,8 @@ export default function LandingPage() {
             </div>
             <div className="flex-1 relative aspect-auto rounded-3xl overflow-hidden shadow-2xl ring-4 ring-gradient-to-r from-blue-200 to-indigo-200 hover:scale-105 transition-all duration-500">
               <Image src="/landing/ai-scanner.webp" alt="AI Document Analyzer" width={1900} height={1524} />
+              {/* Animated "scanning" beam that sweeps up and down over the document */}
+              <div className="pointer-events-none absolute left-0 right-0 top-0 h-1.5 bg-emerald-400/90 shadow-[0_0_22px_7px_rgba(52,211,153,0.8)] animate-scanline" />
             </div>
           </div>
 
@@ -395,200 +396,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Upcoming Features */}
-      <section className="py-20 px-8 bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 mt-28 relative overflow-hidden">
-        <div className="absolute top-10 left-10 w-64 h-64 bg-gradient-to-r from-pink-400 to-indigo-400 rounded-full opacity-5 blur-3xl" />
-        <div className="absolute bottom-10 right-10 w-80 h-80 bg-gradient-to-r from-indigo-400 to-pink-400 rounded-full opacity-5 blur-3xl" />
 
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl font-bold mb-4 bg-gradient-to-r from-pink-600 to-indigo-600 bg-clip-text text-transparent">
-              Upcoming Features
-            </h2>
-            <p className="text-gray-700 max-w-2xl mx-auto font-medium">
-              We&apos;re a small, indie project constantly improving. Here&apos;s what we&apos;re working on next.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-8 mb-16">
-            {/* AI Improvements */}
-            <div className="bg-gradient-to-br from-white via-purple-50/50 to-indigo-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-purple-200 to-indigo-200 hover:shadow-2xl transition-all duration-500 hover:scale-105">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">🤖</span>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-purple-700 to-indigo-700 bg-clip-text text-transparent">
-                  Better AI Analytics & Agents
-                </h3>
-              </div>
-              <ul className="space-y-3 text-gray-700">
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🔮</span>
-                  Income & expense insights
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🔮</span>
-                  AI agents to automate your workflows
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🔮</span>
-                  Recommendations for tax optimization
-                </li>
-                <li className="flex items-center">
-                  <span className="text-purple-600 mr-3 text-lg">🔮</span>
-                  Custom and local LLM models
-                </li>
-              </ul>
-            </div>
-
-            {/* Smart Reports */}
-            <div className="bg-gradient-to-br from-white via-pink-50/50 to-rose-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-pink-200 to-rose-200 hover:shadow-2xl transition-all duration-500 hover:scale-105">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">📊</span>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-pink-700 to-rose-700 bg-clip-text text-transparent">
-                  Smart Reports & Reminders
-                </h3>
-              </div>
-              <ul className="space-y-3 text-gray-700">
-                <li className="flex items-center">
-                  <span className="text-pink-600 mr-3 text-lg">📈</span>
-                  Monthly or quarterly VAT reports
-                </li>
-                <li className="flex items-center">
-                  <span className="text-pink-600 mr-3 text-lg">📈</span>
-                  Tax reminders
-                </li>
-                <li className="flex items-center">
-                  <span className="text-pink-600 mr-3 text-lg">📈</span>
-                  Annual income & expense reports
-                </li>
-              </ul>
-            </div>
-
-            {/* Transaction Review */}
-            <div className="bg-gradient-to-br from-white via-green-50/50 to-emerald-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-green-200 to-emerald-200 hover:shadow-2xl transition-all duration-500 hover:scale-105">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">📥</span>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-green-700 to-emerald-700 bg-clip-text text-transparent">
-                  Multiple Transaction Review
-                </h3>
-              </div>
-              <ul className="space-y-3 text-gray-700">
-                <li className="flex items-center">
-                  <span className="text-green-600 mr-3 text-lg">💳</span>
-                  Bank statement analysis
-                </li>
-                <li className="flex items-center">
-                  <span className="text-green-600 mr-3 text-lg">💳</span>
-                  Automatic data completeness checks
-                </li>
-                <li className="flex items-center">
-                  <span className="text-green-600 mr-3 text-lg">💳</span>
-                  Unpaid invoice tracking
-                </li>
-              </ul>
-            </div>
-
-            {/* Custom Fields */}
-            <div className="bg-gradient-to-br from-white via-orange-50/50 to-amber-50/50 p-8 rounded-3xl shadow-xl ring-2 ring-gradient-to-r from-orange-200 to-amber-200 hover:shadow-2xl transition-all duration-500 hover:scale-105">
-              <div className="flex items-center gap-3 mb-4">
-                <span className="text-3xl">🧩</span>
-                <h3 className="text-xl font-bold bg-gradient-to-r from-orange-700 to-amber-700 bg-clip-text text-transparent">
-                  Presets and Plugins
-                </h3>
-              </div>
-              <ul className="space-y-3 text-gray-700">
-                <li className="flex items-center">
-                  <span className="text-orange-600 mr-3 text-lg">🌍</span>
-                  Presets for different countries and industries
-                </li>
-                <li className="flex items-center">
-                  <span className="text-orange-600 mr-3 text-lg">🌍</span>
-                  Custom reports for various use-cases
-                </li>
-                <li className="flex items-center">
-                  <span className="text-orange-600 mr-3 text-lg">🌍</span>
-                  Community plugins and reports
-                </li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Stay Tuned / GitHub CTA */}
-          <div className="bg-gradient-to-r from-purple-50 to-blue-50 p-8 rounded-2xl shadow-sm ring-1 ring-gray-100">
-            <div className="max-w-2xl mx-auto text-center">
-              <h3 className="text-2xl font-semibold mb-4">Stay Tuned</h3>
-              <p className="text-gray-600 mb-6">
-                We&apos;re working hard on making Agri-KwankosiTax useful for everyone. Star and watch our GitHub repo to get
-                notified about new features and releases.
-              </p>
-              <div className="flex flex-col gap-4 max-w-md mx-auto">
-                <div className="flex flex-wrap items-center justify-center gap-4">
-                  <a
-                    href="https://github.com/vas3k/TaxHacker"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white font-medium rounded-full hover:opacity-90 transition-all shadow-lg shadow-purple-500/20"
-                  >
-                    Open GitHub repo
-                  </a>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <footer className="py-8 px-8 bg-gradient-to-r from-pink-50 to-indigo-50 border-t-2 border-gradient-to-r from-pink-200 to-indigo-200">
-        <div className="max-w-7xl mx-auto text-center text-sm text-gray-600">
-          Made with ❤️ in Berlin by{" "}
-          <Link
-            href="https://github.com/vas3k"
-            className="underline font-semibold hover:text-pink-600 transition-colors"
-          >
-            @vas3k
-          </Link>
-        </div>
-
-        <section className="py-12 px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex flex-wrap gap-4 justify-center">
-              <Link
-                href={`mailto:${config.app.supportEmail}`}
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Contact Us
-              </Link>
-              <Link
-                href="/docs/terms"
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Terms of Service
-              </Link>
-              <Link
-                href="/docs/privacy_policy"
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Privacy Policy
-              </Link>
-              <Link href="/docs/ai" className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors">
-                AI Use Disclosure
-              </Link>
-              <Link
-                href="/docs/cookie"
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Cookie Policy
-              </Link>
-              <Link
-                href="https://github.com/vas3k/TaxHacker"
-                target="_blank"
-                className="text-sm text-gray-600 hover:text-pink-600 font-medium transition-colors"
-              >
-                Source Code
-              </Link>
-            </div>
-          </div>
-        </section>
-      </footer>
     </div>
   )
 }

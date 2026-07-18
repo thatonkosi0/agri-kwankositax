@@ -8,60 +8,24 @@ export const metadata: Metadata = {
   description: "Customize your settings here",
 }
 
+// adminOnly items are hidden from non-admin (member) accounts.
 const settingsCategories = [
-  {
-    title: "General",
-    href: "/settings",
-  },
-  {
-    title: "Profile & Plan",
-    href: "/settings/profile",
-  },
-  {
-    title: "Business Details",
-    href: "/settings/business",
-  },
-  {
-    title: "LLM settings",
-    href: "/settings/llm",
-  },
-  {
-    title: "Fields",
-    href: "/settings/fields",
-  },
-  {
-    title: "Categories",
-    href: "/settings/categories",
-  },
-  {
-    title: "Projects",
-    href: "/settings/projects",
-  },
-  {
-    title: "Currencies",
-    href: "/settings/currencies",
-  },
-  {
-    title: "Backups",
-    href: "/settings/backups",
-  },
-]
-
-// Only shown to admins.
-const adminOnlyCategories = [
-  {
-    title: "Danger Zone",
-    href: "/settings/danger",
-  },
-  {
-    title: "Users",
-    href: "/settings/users",
-  },
+  { title: "General", href: "/settings" },
+  { title: "Profile & Plan", href: "/settings/profile" },
+  { title: "Business Details", href: "/settings/business", adminOnly: true },
+  { title: "LLM settings", href: "/settings/llm", adminOnly: true },
+  { title: "Fields", href: "/settings/fields", adminOnly: true },
+  { title: "Categories", href: "/settings/categories", adminOnly: true },
+  { title: "Projects", href: "/settings/projects" },
+  { title: "Currencies", href: "/settings/currencies" },
+  { title: "Backups", href: "/settings/backups", adminOnly: true },
+  { title: "Danger Zone", href: "/settings/danger", adminOnly: true },
+  { title: "Users", href: "/settings/users", adminOnly: true },
 ]
 
 export default async function SettingsLayout({ children }: { children: React.ReactNode }) {
   const user = await getCurrentUser()
-  const navItems = user.isAdmin ? [...settingsCategories, ...adminOnlyCategories] : settingsCategories
+  const navItems = user.isAdmin ? settingsCategories : settingsCategories.filter((c) => !c.adminOnly)
 
   return (
     <>

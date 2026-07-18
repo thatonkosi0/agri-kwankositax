@@ -92,3 +92,22 @@
     -moz-appearance: textfield;
   }
 }
+
+/* Scanning beam that sweeps up and down (landing page AI demo) */
+@keyframes scanline {
+  0% {
+    top: 3%;
+    opacity: 0.35;
+  }
+  50% {
+    top: 94%;
+    opacity: 1;
+  }
+  100% {
+    top: 3%;
+    opacity: 0.35;
+  }
+}
+.animate-scanline {
+  animation: scanline 2.6s ease-in-out infinite;
+}
