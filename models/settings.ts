@@ -1,3 +1,4 @@
+import config from "@/lib/config"
 import { prisma } from "@/lib/db"
 import { PROVIDERS } from "@/lib/llm-providers"
 import { cache } from "react"
@@ -12,25 +13,27 @@ export function getLLMSettings(settings: SettingsMap) {
   const priorities = (settings.llm_providers || "openai,google,mistral,openai_compatible").split(",").map(p => p.trim()).filter(Boolean)
 
   const providers = priorities.map((provider) => {
+    // Per-user key wins; otherwise fall back to a shared key from env
+    // (e.g. one GOOGLE_API_KEY set in Vercel that every member uses).
     if (provider === "openai") {
       return {
         provider: provider as LLMProvider,
-        apiKey: settings.openai_api_key || "",
-        model: settings.openai_model_name || PROVIDERS[0]['defaultModelName'],
+        apiKey: settings.openai_api_key || config.ai.openaiApiKey || "",
+        model: settings.openai_model_name || config.ai.openaiModelName || PROVIDERS[0]['defaultModelName'],
       }
     }
     if (provider === "google") {
       return {
         provider: provider as LLMProvider,
-        apiKey: settings.google_api_key || "",
-        model: settings.google_model_name || PROVIDERS[1]['defaultModelName'],
+        apiKey: settings.google_api_key || config.ai.googleApiKey || "",
+        model: settings.google_model_name || config.ai.googleModelName || PROVIDERS[1]['defaultModelName'],
       }
     }
     if (provider === "mistral") {
       return {
         provider: provider as LLMProvider,
-        apiKey: settings.mistral_api_key || "",
-        model: settings.mistral_model_name || PROVIDERS[2]['defaultModelName'],
+        apiKey: settings.mistral_api_key || config.ai.mistralApiKey || "",
+        model: settings.mistral_model_name || config.ai.mistralModelName || PROVIDERS[2]['defaultModelName'],
       }
     }
     if (provider === "openai_compatible") {
