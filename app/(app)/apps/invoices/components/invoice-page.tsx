@@ -8,9 +8,9 @@ import { InputHTMLAttributes, memo, useCallback, useMemo } from "react"
 
 // Logos are stored inline (base64) in each template's JSON, so keep them small.
 const MAX_LOGO_SIZE_BYTES = 1024 * 1024 // 1 MB
-// Restrict to raster formats that @react-pdf can render and that carry no active
-// content (excludes image/svg+xml, which is a stored-content / XSS vector).
-const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"]
+// Restrict to raster formats that @react-pdf can render (PNG/JPEG only — it does
+// NOT support WebP) and that carry no active content (excludes image/svg+xml).
+const ALLOWED_LOGO_TYPES = ["image/png", "image/jpeg"]
 
 export interface InvoiceItem {
   name: string
@@ -309,7 +309,7 @@ export function InvoicePage({ invoiceData, dispatch, currencies }: InvoicePagePr
         <div className="flex flex-row items-center justify-end mt-4 sm:mt-0">
           <FormAvatar
             name="businessLogo"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/png,image/jpeg"
             className="w-[60px] h-[60px] sm:w-[100px] sm:h-[100px]"
             defaultValue={invoiceData.businessLogo || ""}
             onChange={(e) => {
@@ -320,7 +320,7 @@ export function InvoicePage({ invoiceData, dispatch, currencies }: InvoicePagePr
               }
 
               if (!ALLOWED_LOGO_TYPES.includes(file.type)) {
-                alert("Please choose a PNG, JPEG, or WebP image for the logo.")
+                alert("Please choose a PNG or JPEG image for the logo.")
                 e.target.value = ""
                 return
               }
