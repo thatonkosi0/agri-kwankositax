@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db"
 import { calcTotalPerCurrency } from "@/lib/stats"
 import { Prisma } from "@/prisma/client"
 import { cache } from "react"
-import { TransactionFilters } from "./transactions"
+import { getTransactionVisibility, TransactionFilters } from "./transactions"
 
 export type DashboardStats = {
   totalIncomePerCurrency: Record<string, number>
@@ -22,7 +22,9 @@ export const getDashboardStats = cache(
       }
     }
 
-    const transactions = await prisma.transaction.findMany({ where: { ...where, userId } })
+    const transactions = await prisma.transaction.findMany({
+      where: { ...where, ...(await getTransactionVisibility(userId)) },
+    })
     const totalIncomePerCurrency = calcTotalPerCurrency(transactions.filter((t) => t.type === "income"))
     const totalExpensesPerCurrency = calcTotalPerCurrency(transactions.filter((t) => t.type === "expense"))
     const profitPerCurrency = Object.fromEntries(
@@ -61,7 +63,9 @@ export const getProjectStats = cache(async (userId: string, projectId: string, f
     }
   }
 
-  const transactions = await prisma.transaction.findMany({ where: { ...where, userId } })
+  const transactions = await prisma.transaction.findMany({
+    where: { ...where, ...(await getTransactionVisibility(userId)) },
+  })
   const totalIncomePerCurrency = calcTotalPerCurrency(transactions.filter((t) => t.type === "income"))
   const totalExpensesPerCurrency = calcTotalPerCurrency(transactions.filter((t) => t.type === "expense"))
   const profitPerCurrency = Object.fromEntries(
@@ -111,7 +115,7 @@ export const getTimeSeriesStats = cache(
     filters: TransactionFilters = {},
     defaultCurrency: string = "EUR"
   ): Promise<TimeSeriesData[]> => {
-    const where: Prisma.TransactionWhereInput = { userId }
+    const where: Prisma.TransactionWhereInput = { ...(await getTransactionVisibility(userId)) }
 
     if (filters.dateFrom || filters.dateTo) {
       where.issuedAt = {
@@ -190,7 +194,7 @@ export const getDetailedTimeSeriesStats = cache(
     filters: TransactionFilters = {},
     defaultCurrency: string = "EUR"
   ): Promise<DetailedTimeSeriesData[]> => {
-    const where: Prisma.TransactionWhereInput = { userId }
+    const where: Prisma.TransactionWhereInput = { ...(await getTransactionVisibility(userId)) }
 
     if (filters.dateFrom || filters.dateTo) {
       where.issuedAt = {

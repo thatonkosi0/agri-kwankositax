@@ -191,10 +191,15 @@ export const createTransaction = async (userId: string, data: TransactionData): 
 }
 
 export const updateTransaction = async (id: string, userId: string, data: TransactionData): Promise<Transaction> => {
+  // Collaborative: allow editing any transaction the user can see (own or in an assigned project).
+  const existing = await getTransactionById(id, userId)
+  if (!existing) {
+    throw new Error("Transaction not found or not accessible")
+  }
   const { standard, extra } = await splitTransactionDataExtraFields(data, userId)
 
   return await prisma.transaction.update({
-    where: { id, userId },
+    where: { id },
     data: {
       ...standard,
       extra: extra,
@@ -204,8 +209,12 @@ export const updateTransaction = async (id: string, userId: string, data: Transa
 }
 
 export const updateTransactionFiles = async (id: string, userId: string, files: string[]): Promise<Transaction> => {
+  const existing = await getTransactionById(id, userId)
+  if (!existing) {
+    throw new Error("Transaction not found or not accessible")
+  }
   return await prisma.transaction.update({
-    where: { id, userId },
+    where: { id },
     data: { files },
   })
 }
@@ -214,23 +223,26 @@ export const deleteTransaction = async (id: string, userId: string): Promise<Tra
   const transaction = await getTransactionById(id, userId)
 
   if (transaction) {
+    // File cleanup runs against the transaction's OWNER (files/storage are owner-scoped).
+    const ownerId = transaction.userId
     const files = Array.isArray(transaction.files) ? transaction.files : []
 
     for (const fileId of files as string[]) {
-      if ((await getTransactionsByFileId(fileId, userId)).length <= 1) {
-        await deleteFile(fileId, userId)
+      if ((await getTransactionsByFileId(fileId, ownerId)).length <= 1) {
+        await deleteFile(fileId, ownerId)
       }
     }
 
     return await prisma.transaction.delete({
-      where: { id, userId },
+      where: { id },
     })
   }
 }
 
 export const bulkDeleteTransactions = async (ids: string[], userId: string) => {
+  const visibility = await getTransactionVisibility(userId)
   return await prisma.transaction.deleteMany({
-    where: { id: { in: ids }, userId },
+    where: { AND: [{ id: { in: ids } }, visibility] },
   })
 }
 
