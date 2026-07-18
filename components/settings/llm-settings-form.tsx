@@ -64,20 +64,18 @@ export default function LLMSettingsForm({
   return (
     <>
       <form action={saveAction} className="space-y-4">
-        {isSelfHosted && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium">LLM providers</label>
-            <DndProviderBlocks
-              providerOrder={providerOrder}
-              setProviderOrder={setProviderOrder}
-              providerValues={providerValues}
-              handleProviderValueChange={handleProviderValueChange}
-            />
-            <small className="text-muted-foreground">Drag provider blocks to reorder. First is highest priority.</small>
-          </div>
-        )}
+        <div className="space-y-2">
+          <label className="text-sm font-medium">LLM providers</label>
+          <DndProviderBlocks
+            providerOrder={providerOrder}
+            setProviderOrder={setProviderOrder}
+            providerValues={providerValues}
+            handleProviderValueChange={handleProviderValueChange}
+          />
+          <small className="text-muted-foreground">Drag provider blocks to reorder. First is highest priority.</small>
+        </div>
 
-        {isSelfHosted && <input type="hidden" name="llm_providers" value={providerOrder.join(",")} />}
+        <input type="hidden" name="llm_providers" value={providerOrder.join(",")} />
 
         <FormTextarea
           title="Prompt for File Analysis Form"
