@@ -1,0 +1,7 @@
+# Dev-only override: publishes the Postgres port to the host so a locally-run
+# `npm run dev` can connect. Use with:
+#   docker compose -f docker-compose.yml -f docker-compose.dev-db.yml up -d postgres
+services:
+  postgres:
+    ports:
+      - "5432:5432"
