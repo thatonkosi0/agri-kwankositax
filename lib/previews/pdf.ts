@@ -7,6 +7,53 @@ import { createCanvas } from "@napi-rs/canvas"
 import sharp from "sharp"
 import config from "../config"
 
+// Rasterizes a PDF held in memory to webp page images (base64), without touching
+// storage. Used by bank-statement analysis: sending rendered page images lets the
+// model *see* the statement, which reads tabular transactions far more reliably
+// than handing it the raw PDF.
+export async function rasterizePdfBufferToImages(
+  bytes: Buffer,
+  maxPages: number = config.upload.pdfs.maxPages
+): Promise<{ contentType: string; base64: string }[]> {
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs")
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(bytes), useSystemFonts: true })
+  const doc = await loadingTask.promise
+
+  const dpiScale = config.upload.pdfs.dpi / 72
+  const pageCount = Math.min(doc.numPages, maxPages)
+  const images: { contentType: string; base64: string }[] = []
+
+  try {
+    for (let i = 1; i <= pageCount; i++) {
+      const page = await doc.getPage(i)
+      const baseViewport = page.getViewport({ scale: 1 })
+      const maxScale = Math.min(
+        config.upload.pdfs.maxWidth / baseViewport.width,
+        config.upload.pdfs.maxHeight / baseViewport.height
+      )
+      const scale = Math.min(dpiScale, maxScale) || 1
+      const viewport = page.getViewport({ scale })
+
+      const canvas = createCanvas(Math.ceil(viewport.width), Math.ceil(viewport.height))
+      const context = canvas.getContext("2d")
+      await page.render({
+        canvas: canvas as unknown as HTMLCanvasElement,
+        canvasContext: context as unknown as CanvasRenderingContext2D,
+        viewport,
+      }).promise
+
+      const png = canvas.toBuffer("image/png")
+      const webp = await sharp(png).webp({ quality: config.upload.pdfs.quality }).toBuffer()
+      images.push({ contentType: "image/webp", base64: webp.toString("base64") })
+      page.cleanup()
+    }
+  } finally {
+    await loadingTask.destroy()
+  }
+
+  return images
+}
+
 // Renders PDF pages to webp previews using pdf.js + a serverless-friendly
 // native canvas (no GraphicsMagick/Ghostscript system binaries required, so it
 // works on Vercel). Rendered pages are stored via the storage backend.

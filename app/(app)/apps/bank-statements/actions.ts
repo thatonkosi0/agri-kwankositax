@@ -12,6 +12,7 @@ import {
   unsortedFilePath,
 } from "@/lib/files"
 import { extractPdfPages, getPdfPageCount } from "@/lib/pdf-split"
+import { rasterizePdfBufferToImages } from "@/lib/previews/pdf"
 import { getStorage } from "@/lib/storage"
 import { createFile, getFileById, updateFile } from "@/models/files"
 import { getSettings } from "@/models/settings"
@@ -113,11 +114,16 @@ export async function analyzeStatementChunkAction(
 
     let attachments
     if (file.mimetype === "application/pdf") {
+      // Render just this page range to images and let the model read them as a
+      // picture — far more reliable on real tabular statements than raw PDF text.
       const fullBytes = await getStorage().read(fullKeyForFile(user, file))
       const chunkPdf = await extractPdfPages(fullBytes, startPage, endPage)
-      attachments = [
-        { filename: file.filename, contentType: "application/pdf", base64: chunkPdf.toString("base64") },
-      ]
+      const images = await rasterizePdfBufferToImages(chunkPdf)
+      attachments = images.map((img) => ({
+        filename: file.filename,
+        contentType: img.contentType,
+        base64: img.base64,
+      }))
     } else {
       // Non-PDF (image) statements are a single "page".
       attachments = await loadAttachmentsForAI(user, file)
