@@ -64,3 +64,8 @@ pgdata
 *.db-journal
 # Sentry Config File
 .env.sentry-build-plugin
+
+# Tool state (ruflo / claude-flow)
+.claude-flow/
+.claude/proven-config.json
+.claude/.proven-config-version
