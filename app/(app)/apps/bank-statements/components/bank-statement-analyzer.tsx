@@ -9,9 +9,14 @@ import { Loader2, Trash2, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
-import { saveStatementRowsAction, uploadAndAnalyzeStatementAction } from "../actions"
+import { analyzeStatementChunkAction, saveStatementRowsAction, uploadStatementAction } from "../actions"
 
 type Phase = "idle" | "analyzing" | "review"
+
+// Pages analyzed per request. Small enough that each AI call stays well under the
+// serverless function time limit; the client stitches the batches together.
+const PAGE_BATCH = 2
+const MAX_PAGES = 40
 
 export function BankStatementAnalyzer({
   projects,
@@ -28,36 +33,72 @@ export function BankStatementAnalyzer({
   const [currency, setCurrency] = useState(defaultCurrency)
   const [projectCode, setProjectCode] = useState("")
   const [isSaving, startSaving] = useTransition()
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const analyze = async (file: File) => {
     setPhase("analyzing")
+    setRows([])
+    setProgress(null)
     try {
       const formData = new FormData()
       formData.append("file", file)
-      const result = await uploadAndAnalyzeStatementAction(formData)
+      const uploaded = await uploadStatementAction(formData)
 
-      if (!result.success || !result.data) {
-        toast.error(result.error || "Failed to analyze statement")
+      if (!uploaded.success || !uploaded.data) {
+        toast.error(uploaded.error || "Failed to upload statement")
         setPhase("idle")
         return
       }
 
-      if (result.data.rows.length === 0) {
-        toast.warning("No transactions were detected in this statement")
+      const { fileId: uploadedId, pageCount, defaultCurrency: dc } = uploaded.data
+      setFileId(uploadedId)
+
+      const totalPages = Math.min(pageCount, MAX_PAGES)
+      if (pageCount > MAX_PAGES) {
+        toast.warning(`Statement has ${pageCount} pages; analyzing the first ${MAX_PAGES}.`)
       }
-      setFileId(result.data.fileId)
-      setCurrency(result.data.currency || defaultCurrency)
-      setRows(result.data.rows)
+      setProgress({ done: 0, total: totalPages })
+
+      // Analyze the statement one small page range at a time so each request
+      // stays under the serverless time limit, accumulating the rows as we go.
+      const collected: BankStatementRow[] = []
+      let resolvedCurrency = dc || defaultCurrency
+      let anySucceeded = false
+      let anyFailed = false
+
+      for (let start = 1; start <= totalPages; start += PAGE_BATCH) {
+        const end = Math.min(start + PAGE_BATCH - 1, totalPages)
+        const chunk = await analyzeStatementChunkAction(uploadedId, start, end)
+        if (chunk.success && chunk.data) {
+          anySucceeded = true
+          collected.push(...chunk.data.rows)
+          if (chunk.data.currency) resolvedCurrency = chunk.data.currency
+          setRows([...collected])
+        } else {
+          anyFailed = true
+          toast.error(chunk.error || `Failed to analyze pages ${start}-${end}`)
+        }
+        setProgress({ done: end, total: totalPages })
+      }
+
+      if (!anySucceeded) {
+        setPhase("idle")
+        return
+      }
+      if (collected.length === 0) {
+        toast.warning("No transactions were detected in this statement")
+      } else if (anyFailed) {
+        toast.warning("Some pages couldn't be analyzed — review the results and re-upload if needed.")
+      }
+      setCurrency(resolvedCurrency)
+      setRows(collected)
       setPhase("review")
     } catch (error) {
-      // A thrown action usually means the serverless function was killed —
-      // most often the platform time limit on a large/multi-page statement.
       console.error("Bank statement analysis failed:", error)
-      toast.error(
-        "Analysis failed or timed out. Large statements can exceed the server time limit — try a shorter statement or fewer pages.",
-        { duration: 8000 }
-      )
+      toast.error("Analysis failed. Please try again.", { duration: 8000 })
       setPhase("idle")
+    } finally {
+      setProgress(null)
     }
   }
 
@@ -117,12 +158,17 @@ export function BankStatementAnalyzer({
           {phase === "analyzing" ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Analyzing statement…
+              {progress && progress.total > 1
+                ? `Analyzing pages ${progress.done}/${progress.total}…`
+                : "Analyzing statement…"}
             </>
           ) : (
             "Choose statement"
           )}
         </Button>
+        {phase === "analyzing" && rows.length > 0 && (
+          <p className="text-sm text-muted-foreground">{rows.length} transactions found so far…</p>
+        )}
       </div>
     )
   }
