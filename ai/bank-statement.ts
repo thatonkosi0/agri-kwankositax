@@ -1,5 +1,3 @@
-"use server"
-
 import { AnalyzeAttachment } from "./attachments"
 import { requestLLM } from "./providers/llmProvider"
 import { getLLMSettings, SettingsMap } from "@/models/settings"

@@ -6,7 +6,7 @@ import { ActionState } from "@/lib/actions"
 import { getCurrentUser, isAiBalanceExhausted, isSubscriptionExpired } from "@/lib/auth"
 import { getUserStorageUsed, isEnoughStorageToUploadFile, storageKey, unsortedFilePath } from "@/lib/files"
 import { getStorage } from "@/lib/storage"
-import { createFile, getFileById, updateFile } from "@/models/files"
+import { createFile, deleteFile, getFileById, updateFile } from "@/models/files"
 import { getSettings } from "@/models/settings"
 import { createTransaction, TransactionData, updateTransactionFiles } from "@/models/transactions"
 import { updateUser } from "@/models/users"
@@ -59,11 +59,27 @@ export async function uploadAndAnalyzeStatementAction(formData: FormData): Promi
     await updateUser(user.id, { storageUsed: await getUserStorageUsed(user) })
 
     const settings = await getSettings(user.id)
-    const attachments = await loadAttachmentsForAI(user, fileRecord, MAX_STATEMENT_PAGES)
-    const result = await analyzeBankStatement(attachments, settings)
+
+    // If preview generation or the AI call fails, don't leave the uploaded
+    // statement orphaned in the unsorted queue — remove it before returning.
+    let result
+    try {
+      const attachments = await loadAttachmentsForAI(user, fileRecord, MAX_STATEMENT_PAGES)
+      result = await analyzeBankStatement(attachments, settings)
+    } catch (error) {
+      await deleteFile(fileRecord.id, user.id).catch(() => {})
+      throw error
+    }
 
     if (!result.success) {
-      return { success: false, error: result.error || "Failed to analyze statement" }
+      await deleteFile(fileRecord.id, user.id).catch(() => {})
+      return {
+        success: false,
+        error:
+          result.error === "All LLM providers failed or are not configured"
+            ? "No AI provider is configured. Add an LLM API key in Settings → LLM (Google Gemini has a free tier), then try again."
+            : result.error || "Failed to analyze statement",
+      }
     }
 
     return {
