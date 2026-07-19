@@ -1,3 +1,4 @@
+import { manifest as bankStatementsManifest } from "./bank-statements/manifest"
 import { manifest as invoicesManifest } from "./invoices/manifest"
 
 export type AppManifest = {
@@ -9,7 +10,10 @@ export type AppManifest = {
 // Static app registry. Registered explicitly (rather than read from the
 // filesystem at runtime) so it works on serverless hosts like Vercel where the
 // source tree isn't available and dynamic globbed imports aren't bundled.
-const APPS: { id: string; manifest: AppManifest }[] = [{ id: "invoices", manifest: invoicesManifest }]
+const APPS: { id: string; manifest: AppManifest }[] = [
+  { id: "invoices", manifest: invoicesManifest },
+  { id: "bank-statements", manifest: bankStatementsManifest },
+]
 
 export async function getApps(): Promise<{ id: string; manifest: AppManifest }[]> {
   return APPS

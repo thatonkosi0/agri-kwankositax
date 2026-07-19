@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS = [
     code: "default_currency",
     name: "Default Currency",
     description: "Don't change this setting if you already have multi-currency transactions. I won't recalculate them.",
-    value: "EUR",
+    value: "ZAR",
   },
   {
     code: "default_category",
@@ -65,6 +65,36 @@ export const DEFAULT_SETTINGS = [
     name: "Do not show welcome message on dashboard",
     description: "",
     value: "false",
+  },
+  {
+    code: "vat_registered",
+    name: "VAT Registered",
+    description: "Is the business registered for VAT? Enables VAT reporting.",
+    value: "true",
+  },
+  {
+    code: "vat_rate",
+    name: "Default VAT Rate (%)",
+    description: "Standard VAT rate applied when a document doesn't state one. South African standard rate is 15%.",
+    value: "15",
+  },
+  {
+    code: "vat_prices_include_vat",
+    name: "Prices Include VAT",
+    description: "If enabled, transaction totals are treated as VAT-inclusive and VAT is derived from the total.",
+    value: "true",
+  },
+  {
+    code: "vat_basis",
+    name: "VAT Reporting Basis",
+    description: "'accrual' counts VAT on the invoice/issue date; 'cash' counts VAT only when paid.",
+    value: "accrual",
+  },
+  {
+    code: "financial_year_start_month",
+    name: "Financial Year Start Month",
+    description: "Month (1-12) the financial year starts. South African tax year for individuals starts in March (3).",
+    value: "3",
   },
 ]
 
