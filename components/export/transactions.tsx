@@ -20,6 +20,7 @@ import { useTransactionFilters } from "@/hooks/use-transaction-filters"
 import { Category, Field, Project } from "@/prisma/client"
 import { formatDate } from "date-fns"
 import { useState } from "react"
+import { toast } from "sonner"
 
 const deselectedFields = ["files", "text"]
 
@@ -44,12 +45,16 @@ export function ExportTransactionsDialog({
   const { isLoading, startProgress, progress } = useProgress({
     onError: (error) => {
       console.error("Export progress error:", error)
+      toast.error("Export failed while preparing the archive. Please try again.")
     },
   })
 
   const { download, isDownloading } = useDownload({
     onError: (error) => {
       console.error("Download error:", error)
+      toast.error(
+        "The export couldn't be downloaded. Large exports with attachments can exceed the server limit — try exporting fewer transactions or without attachments."
+      )
     },
   })
 

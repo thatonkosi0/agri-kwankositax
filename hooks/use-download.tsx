@@ -29,8 +29,10 @@ export function useDownload(options: UseDownloadOptions = {}) {
       a.download = filename
       document.body.appendChild(a)
       a.click()
-      window.URL.revokeObjectURL(downloadLink)
       document.body.removeChild(a)
+      // Revoke on a later tick. Revoking synchronously after click() cancels the
+      // download in some browsers (e.g. Edge) — the file is built but never saves.
+      setTimeout(() => window.URL.revokeObjectURL(downloadLink), 30000)
 
       options.onSuccess?.()
     } catch (error) {
