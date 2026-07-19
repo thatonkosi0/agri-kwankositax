@@ -71,7 +71,8 @@ export async function saveInvoiceAsTransactionAction(
     const fees = formData.additionalFees.reduce((sum, fee) => sum + fee.amount, 0)
     const totalAmount = (formData.taxIncluded ? subtotal : subtotal + taxes) + fees
 
-    // Create transaction
+    // Create transaction. Invoices are tracked as unpaid receivables with a due
+    // date so they surface in the receivables/aging report until marked paid.
     const rawTransactionData: TransactionData = {
       name: `Invoice #${formData.invoiceNumber || "unknown"}`,
       merchant: `${formData.billTo.split("\n")[0]}`,
@@ -81,7 +82,8 @@ export async function saveInvoiceAsTransactionAction(
       categoryCode: null,
       projectCode: null,
       type: "income",
-      status: "pending",
+      status: "unpaid",
+      dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
     }
 
     // --- Deduplication Check ---

@@ -11,7 +11,13 @@ export type AnalyzeAttachment = {
   base64: string
 }
 
-export const loadAttachmentsForAI = async (user: User, file: File): Promise<AnalyzeAttachment[]> => {
+// maxPages defaults to the single-document limit. Multi-page documents such as
+// bank statements pass a higher limit so every page reaches the model.
+export const loadAttachmentsForAI = async (
+  user: User,
+  file: File,
+  maxPages: number = MAX_PAGES_TO_ANALYZE
+): Promise<AnalyzeAttachment[]> => {
   const fileKey = fullKeyForFile(user, file)
   const isFileExists = await fileExists(fileKey)
   if (!isFileExists) {
@@ -21,7 +27,7 @@ export const loadAttachmentsForAI = async (user: User, file: File): Promise<Anal
   const { contentType, previews } = await generateFilePreviews(user, fileKey, file.mimetype)
 
   return Promise.all(
-    previews.slice(0, MAX_PAGES_TO_ANALYZE).map(async (preview) => ({
+    previews.slice(0, maxPages).map(async (preview) => ({
       filename: file.filename,
       contentType: contentType,
       base64: await loadKeyAsBase64(preview),

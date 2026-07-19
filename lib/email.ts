@@ -1,3 +1,4 @@
+import { InvoiceReminderEmail } from "@/components/emails/invoice-reminder-email"
 import { NewsletterWelcomeEmail } from "@/components/emails/newsletter-welcome-email"
 import { OTPEmail } from "@/components/emails/otp-email"
 import React from "react"
@@ -13,6 +14,37 @@ export async function sendOTPCodeEmail({ email, otp }: { email: string; otp: str
     from: config.email.from,
     to: email,
     subject: "Your Agri-KwankosiTax verification code",
+    react: html,
+  })
+}
+
+export async function sendInvoiceReminderEmail({
+  to,
+  invoiceName,
+  amount,
+  dueDate,
+  daysOverdue,
+  businessName,
+}: {
+  to: string
+  invoiceName: string
+  amount: string
+  dueDate: string | null
+  daysOverdue: number
+  businessName: string
+}) {
+  const html = React.createElement(InvoiceReminderEmail, {
+    invoiceName,
+    amount,
+    dueDate,
+    daysOverdue,
+    businessName,
+  })
+
+  return await resend.emails.send({
+    from: config.email.from,
+    to,
+    subject: `Payment reminder: ${invoiceName}`,
     react: html,
   })
 }

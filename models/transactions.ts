@@ -35,8 +35,24 @@ export type TransactionData = {
   categoryCode?: string | null
   projectCode?: string | null
   issuedAt?: Date | string | null
+  // Receivable tracking columns. These are not part of the user-defined Field
+  // registry, so they bypass the extra-field split and are written explicitly.
+  status?: string | null
+  dueDate?: Date | string | null
+  paidAt?: Date | string | null
   text?: string | null
   [key: string]: unknown
+}
+
+// Extract the receivable-tracking system columns from transaction data. These
+// live on the Transaction table directly (not in `extra` and not in the Field
+// registry), so they must be passed through create/update explicitly.
+const receivableColumns = (data: TransactionData) => {
+  const cols: { status?: string | null; dueDate?: Date | null; paidAt?: Date | null } = {}
+  if (data.status !== undefined) cols.status = (data.status as string | null) ?? null
+  if (data.dueDate !== undefined) cols.dueDate = data.dueDate ? new Date(data.dueDate as string | Date) : null
+  if (data.paidAt !== undefined) cols.paidAt = data.paidAt ? new Date(data.paidAt as string | Date) : null
+  return cols
 }
 
 export type TransactionFilters = {
@@ -181,6 +197,7 @@ export const createTransaction = async (userId: string, data: TransactionData): 
   const newTransaction = await prisma.transaction.create({
     data: {
       ...standard,
+      ...receivableColumns(data),
       extra: extra,
       items: data.items as Prisma.InputJsonValue,
       userId,
@@ -202,9 +219,27 @@ export const updateTransaction = async (id: string, userId: string, data: Transa
     where: { id },
     data: {
       ...standard,
+      ...receivableColumns(data),
       extra: extra,
       items: data.items ? (data.items as Prisma.InputJsonValue) : [],
     },
+  })
+}
+
+// Toggle an invoice's paid/unpaid state. Setting paid stamps paidAt (used by the
+// cash-basis VAT report); reverting to unpaid clears it.
+export const setTransactionPaidStatus = async (
+  id: string,
+  userId: string,
+  paid: boolean
+): Promise<Transaction> => {
+  const existing = await getTransactionById(id, userId)
+  if (!existing) {
+    throw new Error("Transaction not found or not accessible")
+  }
+  return await prisma.transaction.update({
+    where: { id },
+    data: paid ? { status: "paid", paidAt: new Date() } : { status: "unpaid", paidAt: null },
   })
 }
 

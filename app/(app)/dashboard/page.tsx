@@ -1,4 +1,6 @@
+import DashboardCompletenessWidget from "@/components/dashboard/completeness-widget"
 import DashboardDropZoneWidget from "@/components/dashboard/drop-zone-widget"
+import DashboardReceivablesWidget from "@/components/dashboard/receivables-widget"
 import { StatsWidget } from "@/components/dashboard/stats-widget"
 import DashboardUnsortedWidget from "@/components/dashboard/unsorted-widget"
 import { WelcomeWidget } from "@/components/dashboard/welcome-widget"
@@ -6,6 +8,7 @@ import { Separator } from "@/components/ui/separator"
 import { getCurrentUser } from "@/lib/auth"
 import config from "@/lib/config"
 import { getUnsortedFiles } from "@/models/files"
+import { getIncompleteTransactionCount, getReceivablesReport } from "@/models/reports"
 import { getSettings } from "@/models/settings"
 import { TransactionFilters } from "@/models/transactions"
 import { Metadata } from "next"
@@ -20,6 +23,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const user = await getCurrentUser()
   const unsortedFiles = await getUnsortedFiles(user.id)
   const settings = await getSettings(user.id)
+  const receivables = await getReceivablesReport(user.id)
+  const incompleteCount = await getIncompleteTransactionCount(user.id)
 
   return (
     <div className="flex flex-col gap-5 p-5 w-full max-w-7xl self-center">
@@ -27,6 +32,15 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <DashboardDropZoneWidget />
 
         <DashboardUnsortedWidget files={unsortedFiles} />
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-5 items-stretch">
+        <DashboardReceivablesWidget
+          outstandingCents={receivables.totalOutstandingCents}
+          overdueCount={receivables.overdueCount}
+          currency={receivables.currency}
+        />
+        <DashboardCompletenessWidget incompleteCount={incompleteCount} />
       </div>
 
       {settings.is_welcome_message_hidden !== "true" && <WelcomeWidget />}
