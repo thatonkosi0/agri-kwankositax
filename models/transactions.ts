@@ -308,5 +308,35 @@ const splitTransactionDataExtraFields = async (
     }
   })
 
+  // The project/category foreign keys reject any value that isn't NULL or an
+  // existing code. A transaction saved without a project submits projectCode as
+  // "" (empty string), and AI extraction can suggest a code that doesn't exist —
+  // both violate the FK. Coerce blank or unknown codes to NULL before writing.
+  if (standard.projectCode !== undefined) {
+    standard.projectCode = await validCodeOrNull("project", standard.projectCode, userId)
+  }
+  if (standard.categoryCode !== undefined) {
+    standard.categoryCode = await validCodeOrNull("category", standard.categoryCode, userId)
+  }
+
   return { standard, extra: extra as Prisma.InputJsonValue }
+}
+
+// Returns the code if it names an existing project/category, otherwise null.
+// Blank strings and unknown codes both become null so foreign keys hold.
+const validCodeOrNull = async (
+  kind: "project" | "category",
+  code: unknown,
+  userId: string
+): Promise<string | null> => {
+  if (typeof code !== "string" || code === "") return null
+  if (kind === "project") {
+    const project = await prisma.project.findUnique({ where: { code }, select: { code: true } })
+    return project ? code : null
+  }
+  const category = await prisma.category.findUnique({
+    where: { userId_code: { userId, code } },
+    select: { code: true },
+  })
+  return category ? code : null
 }
