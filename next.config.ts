@@ -11,12 +11,15 @@ const nextConfig: NextConfig = {
   // Native / heavy packages must not be bundled — they load their own binaries
   // (sharp, @napi-rs/canvas) or worker assets (pdfjs) at runtime on serverless.
   serverExternalPackages: ["@napi-rs/canvas", "sharp", "pdfjs-dist"],
-  // The invoice PDF renderer (@react-pdf/renderer) loads Inter fonts from
-  // ./public/fonts at runtime by relative path. Those files aren't traced into
-  // the serverless function by default, so bundle them explicitly or PDF
-  // generation fails on Vercel ("Failed to generate PDF").
+  // Force-include files that aren't reachable by static import analysis, so
+  // Next's file tracing still ships them into the serverless function:
+  // - Inter fonts: @react-pdf/renderer loads them from ./public/fonts by
+  //   relative path at runtime (invoice PDF generation).
+  // - pdf.js worker: pdf.js loads pdf.worker.mjs via a dynamic "fake worker"
+  //   import, so tracing prunes it and PDF analysis fails on Vercel with
+  //   "Cannot find module .../pdf.worker.mjs".
   outputFileTracingIncludes: {
-    "/**": ["./public/fonts/**/*"],
+    "/**": ["./public/fonts/**/*", "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
   },
   experimental: {
     serverActions: {

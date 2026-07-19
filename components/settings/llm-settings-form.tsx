@@ -84,6 +84,13 @@ export default function LLMSettingsForm({
           className="h-96"
         />
 
+        <FormTextarea
+          title="Prompt for Bank Statement Analysis"
+          name="prompt_analyse_bank_statement"
+          defaultValue={settings.prompt_analyse_bank_statement}
+          className="h-96"
+        />
+
         <div className="flex flex-row items-center gap-4">
           <Button type="submit" disabled={pending}>
             {pending ? "Saving..." : "Save Settings"}

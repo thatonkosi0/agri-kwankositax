@@ -1,6 +1,7 @@
 import { AnalyzeAttachment } from "./attachments"
 import { requestLLM } from "./providers/llmProvider"
 import { getLLMSettings, SettingsMap } from "@/models/settings"
+import { DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT } from "@/models/defaults"
 
 export type BankStatementRow = {
   date: string
@@ -45,21 +46,9 @@ export const bankStatementSchema = {
   additionalProperties: false,
 } as const
 
-export const BANK_STATEMENT_PROMPT = `You are a careful accounting assistant for Agri-Kwankosi, a South African agricultural cooperative. You are reading a BANK STATEMENT (printed or PDF), in any South African language, and extracting every individual transaction line for bookkeeping.
-
-Rules:
-- Extract EVERY transaction row on every page. Do not summarise, merge or skip rows. Opening/closing balance lines are NOT transactions — ignore them.
-- date: the posting/transaction date as YYYY-MM-DD. South African statements use day/month/year order.
-- description: the narrative exactly as written.
-- amount: the absolute value as a positive number with a decimal point, no currency symbol or thousands separators (e.g. 1499.99, not "R 1 499,99").
-- direction: "income" for credits/deposits/money in; "expense" for debits/withdrawals/fees/money out. Use the debit/credit columns or the sign to decide.
-- balance: the running balance after the line if the statement shows one; otherwise omit it.
-- currency: the ISO 4217 code of the account (default ZAR for South African banks if not stated).
-
-Accuracy is the most important thing. Never invent or estimate a value. If a field is unreadable, use your best faithful reading of what is printed. Return only the structured data requested.`
-
 // Runs the bank-statement extraction against the configured LLM providers.
 // Returns the parsed rows for review — it does NOT create any transactions.
+// Uses the admin's editable prompt from settings, falling back to the default.
 export async function analyzeBankStatement(
   attachments: AnalyzeAttachment[],
   settings: SettingsMap
@@ -67,7 +56,7 @@ export async function analyzeBankStatement(
   const llmSettings = getLLMSettings(settings)
 
   const response = await requestLLM(llmSettings, {
-    prompt: BANK_STATEMENT_PROMPT,
+    prompt: settings.prompt_analyse_bank_statement || DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT,
     schema: bankStatementSchema as unknown as Record<string, unknown>,
     attachments,
   })

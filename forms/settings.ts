@@ -17,6 +17,7 @@ export const settingsFormSchema = z.object({
   openai_compatible_base_url: z.string().optional(),
   llm_providers: z.string().default('google,openai,mistral,openai_compatible'),
   prompt_analyse_new_file: z.string().optional(),
+  prompt_analyse_bank_statement: z.string().optional(),
   is_welcome_message_hidden: z.string().optional(),
 })
 

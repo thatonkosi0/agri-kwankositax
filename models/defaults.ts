@@ -29,6 +29,19 @@ Accuracy (most important):
 - Always prefer values explicitly written on the document over anything calculated or assumed.
 - Return exactly one JSON object containing only the requested fields — no notes, explanations or extra text.`
 
+export const DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT = `You are a careful accounting assistant for Agri-Kwankosi, a South African agricultural cooperative. You are reading a BANK STATEMENT (printed or PDF), in any South African language, and extracting every individual transaction line for bookkeeping.
+
+Rules:
+- Extract EVERY transaction row on every page. Do not summarise, merge or skip rows. Opening/closing balance lines are NOT transactions — ignore them.
+- date: the posting/transaction date as YYYY-MM-DD. South African statements use day/month/year order.
+- description: the narrative exactly as written.
+- amount: the absolute value as a positive number with a decimal point, no currency symbol or thousands separators (e.g. 1499.99, not "R 1 499,99").
+- direction: "income" for credits/deposits/money in; "expense" for debits/withdrawals/fees/money out. Use the debit/credit columns or the sign to decide.
+- balance: the running balance after the line if the statement shows one; otherwise omit it.
+- currency: the ISO 4217 code of the account (default ZAR for South African banks if not stated).
+
+Accuracy is the most important thing. Never invent or estimate a value. If a field is unreadable, use your best faithful reading of what is printed. Return only the structured data requested.`
+
 export const DEFAULT_SETTINGS = [
   {
     code: "default_currency",
@@ -59,6 +72,12 @@ export const DEFAULT_SETTINGS = [
     name: "Prompt for Analyze Transaction",
     description: "Allowed variables: {fields}, {categories}, {categories.code}, {projects}, {projects.code}",
     value: DEFAULT_PROMPT_ANALYSE_NEW_FILE,
+  },
+  {
+    code: "prompt_analyse_bank_statement",
+    name: "Prompt for Bank Statement Analysis",
+    description: "Instructions the AI follows when extracting transactions from an uploaded bank statement.",
+    value: DEFAULT_PROMPT_ANALYSE_BANK_STATEMENT,
   },
   {
     code: "is_welcome_message_hidden",
