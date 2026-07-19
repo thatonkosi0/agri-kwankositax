@@ -31,23 +31,34 @@ export function BankStatementAnalyzer({
 
   const analyze = async (file: File) => {
     setPhase("analyzing")
-    const formData = new FormData()
-    formData.append("file", file)
-    const result = await uploadAndAnalyzeStatementAction(formData)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      const result = await uploadAndAnalyzeStatementAction(formData)
 
-    if (!result.success || !result.data) {
-      toast.error(result.error || "Failed to analyze statement")
+      if (!result.success || !result.data) {
+        toast.error(result.error || "Failed to analyze statement")
+        setPhase("idle")
+        return
+      }
+
+      if (result.data.rows.length === 0) {
+        toast.warning("No transactions were detected in this statement")
+      }
+      setFileId(result.data.fileId)
+      setCurrency(result.data.currency || defaultCurrency)
+      setRows(result.data.rows)
+      setPhase("review")
+    } catch (error) {
+      // A thrown action usually means the serverless function was killed —
+      // most often the platform time limit on a large/multi-page statement.
+      console.error("Bank statement analysis failed:", error)
+      toast.error(
+        "Analysis failed or timed out. Large statements can exceed the server time limit — try a shorter statement or fewer pages.",
+        { duration: 8000 }
+      )
       setPhase("idle")
-      return
     }
-
-    if (result.data.rows.length === 0) {
-      toast.warning("No transactions were detected in this statement")
-    }
-    setFileId(result.data.fileId)
-    setCurrency(result.data.currency || defaultCurrency)
-    setRows(result.data.rows)
-    setPhase("review")
   }
 
   const updateRow = (index: number, patch: Partial<BankStatementRow>) => {

@@ -32,30 +32,38 @@ export interface LLMResponse {
 async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LLMResponse> {
   try {
     const temperature = 0
+    // Cap retries so a failing provider surfaces its real error quickly instead
+    // of retrying with exponential backoff until the serverless function is
+    // killed at the platform time limit (which shows up as an endless spinner).
+    const maxRetries = 2
     let model: any
     if (config.provider === "openai") {
       model = new ChatOpenAI({
         apiKey: config.apiKey,
         model: config.model,
         temperature: temperature,
+        maxRetries: maxRetries,
       })
     } else if (config.provider === "google") {
       model = new ChatGoogleGenerativeAI({
         apiKey: config.apiKey,
         model: config.model,
         temperature: temperature,
+        maxRetries: maxRetries,
       })
     } else if (config.provider === "mistral") {
       model = new ChatMistralAI({
         apiKey: config.apiKey,
         model: config.model,
         temperature: temperature,
+        maxRetries: maxRetries,
       })
     } else if (config.provider === "openai_compatible") {
       model = new ChatOpenAI({
         apiKey: config.apiKey || "not-needed",
         model: config.model,
         temperature: temperature,
+        maxRetries: maxRetries,
         configuration: {
           baseURL: config.baseUrl?.trim(),
         },
