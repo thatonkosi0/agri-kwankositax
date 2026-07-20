@@ -24,21 +24,10 @@ export const loadAttachmentsForAI = async (
     throw new Error("File not found in storage")
   }
 
-  // Send PDFs to the model natively rather than rasterizing them to page images.
-  // The LLM (Gemini) reads every page of a multi-page PDF directly, which avoids
-  // the fragile serverless pdf.js/canvas rasterization that renders blank on some
-  // hosts, and removes the per-document page cap. Images are still resized to a
-  // single preview to keep the request small.
-  if (file.mimetype === "application/pdf") {
-    return [
-      {
-        filename: file.filename,
-        contentType: "application/pdf",
-        base64: await loadKeyAsBase64(fileKey),
-      },
-    ]
-  }
-
+  // Render to page images and cap the count. Sending a whole multi-page PDF in a
+  // single request can exceed the serverless function time limit, so this
+  // single-document analyzer stays bounded (multi-line bank statements have their
+  // own chunked flow in the bank-statements app).
   const { contentType, previews } = await generateFilePreviews(user, fileKey, file.mimetype)
 
   return Promise.all(

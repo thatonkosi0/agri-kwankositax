@@ -13,9 +13,10 @@ import { analyzeStatementChunkAction, saveStatementRowsAction, uploadStatementAc
 
 type Phase = "idle" | "analyzing" | "review"
 
-// Pages analyzed per request. Small enough that each AI call stays well under the
-// serverless function time limit; the client stitches the batches together.
-const PAGE_BATCH = 2
+// Pages analyzed per request. One page keeps each AI call well under the
+// serverless function time limit even for dense statements; the client stitches
+// the batches together.
+const PAGE_BATCH = 1
 const MAX_PAGES = 40
 
 export function BankStatementAnalyzer({
