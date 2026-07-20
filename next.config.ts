@@ -19,7 +19,13 @@ const nextConfig: NextConfig = {
   //   import, so tracing prunes it and PDF analysis fails on Vercel with
   //   "Cannot find module .../pdf.worker.mjs".
   outputFileTracingIncludes: {
-    "/**": ["./public/fonts/**/*", "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs"],
+    "/**": [
+      "./public/fonts/**/*",
+      "./node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
+      // Standard PDF font data — required to render text drawn with non-embedded
+      // base-14 fonts (otherwise statement table rows render blank on Vercel).
+      "./node_modules/pdfjs-dist/standard_fonts/**/*",
+    ],
   },
   experimental: {
     serverActions: {

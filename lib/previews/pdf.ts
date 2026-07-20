@@ -4,8 +4,23 @@ import { basenameNoExt, fileExists, getUserPreviewsScope, joinKey } from "@/lib/
 import { getStorage } from "@/lib/storage"
 import { User } from "@/prisma/client"
 import { createCanvas } from "@napi-rs/canvas"
+import path from "path"
 import sharp from "sharp"
 import config from "../config"
+
+// pdf.js needs the standard-font data to render text drawn with the 14 base PDF
+// fonts when they aren't embedded. Without it — and relying on system fonts that
+// don't exist on serverless — such text renders blank (e.g. a statement whose
+// table rows come out empty). Point pdf.js at the fonts bundled with the package.
+// pdf.js requires this to end in a forward slash (even on Windows), so normalize
+// separators rather than using path.sep.
+const STANDARD_FONT_DATA_URL =
+  path.join(process.cwd(), "node_modules", "pdfjs-dist", "standard_fonts").replace(/\\/g, "/") + "/"
+
+const PDF_LOAD_OPTIONS = {
+  useSystemFonts: false,
+  standardFontDataUrl: STANDARD_FONT_DATA_URL,
+}
 
 // Rasterizes a PDF held in memory to webp page images (base64), without touching
 // storage. Used by bank-statement analysis: sending rendered page images lets the
@@ -16,7 +31,7 @@ export async function rasterizePdfBufferToImages(
   maxPages: number = config.upload.pdfs.maxPages
 ): Promise<{ contentType: string; base64: string }[]> {
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs")
-  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(bytes), useSystemFonts: true })
+  const loadingTask = pdfjs.getDocument({ data: new Uint8Array(bytes), ...PDF_LOAD_OPTIONS })
   const doc = await loadingTask.promise
 
   const dpiScale = config.upload.pdfs.dpi / 72
@@ -85,7 +100,7 @@ export async function pdfToImages(
   const data = new Uint8Array(await storage.read(origKey))
   const loadingTask = pdfjs.getDocument({
     data,
-    useSystemFonts: true,
+    ...PDF_LOAD_OPTIONS,
   })
   const doc = await loadingTask.promise
 
