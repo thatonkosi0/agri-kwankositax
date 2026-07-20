@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
 import { analyzeStatementImagesAction, saveStatementRowsAction, uploadStatementAction } from "../actions"
-import { fileToBase64, loadPdfDocument, renderPageToImage } from "./render-pdf"
+import { fileToBase64, loadPdfDocument, renderPageToStrips } from "./render-pdf"
 
 type Phase = "idle" | "analyzing" | "review"
 
@@ -69,7 +69,8 @@ export function BankStatementAnalyzer({
       }
 
       if (file.type === "application/pdf") {
-        // Render each page in the browser, then analyze it — one page per request.
+        // Render each page in the browser and slice it into strips so every AI
+        // request stays small (and fast). Overlapping strips are de-duplicated below.
         const pdf = await loadPdfDocument(file)
         const totalPages = Math.min(pdf.numPages, MAX_PAGES)
         if (pdf.numPages > MAX_PAGES) {
@@ -77,8 +78,10 @@ export function BankStatementAnalyzer({
         }
         setProgress({ done: 0, total: totalPages })
         for (let i = 1; i <= totalPages; i++) {
-          const image = await renderPageToImage(pdf, i)
-          await analyzeImages([image])
+          const strips = await renderPageToStrips(pdf, i)
+          for (const strip of strips) {
+            await analyzeImages([strip])
+          }
           setProgress({ done: i, total: totalPages })
         }
       } else {
@@ -92,13 +95,23 @@ export function BankStatementAnalyzer({
         setPhase("idle")
         return
       }
-      if (collected.length === 0) {
+
+      // Strips overlap, so the same row can be extracted twice — drop duplicates.
+      const seen = new Set<string>()
+      const deduped = collected.filter((r) => {
+        const key = `${r.date}|${(r.description || "").trim().toLowerCase()}|${r.amount}|${r.direction}`
+        if (seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+
+      if (deduped.length === 0) {
         toast.warning("No transactions were detected in this statement")
       } else if (anyFailed) {
         toast.warning("Some pages couldn't be analyzed — review the results and re-upload if needed.")
       }
       setCurrency(resolvedCurrency)
-      setRows(collected)
+      setRows(deduped)
       setPhase("review")
     } catch (error) {
       console.error("Bank statement analysis failed:", error)

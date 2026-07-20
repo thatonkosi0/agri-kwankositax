@@ -32,10 +32,10 @@ export interface LLMResponse {
 async function requestLLMUnified(config: LLMConfig, req: LLMRequest): Promise<LLMResponse> {
   try {
     const temperature = 0
-    // Cap retries so a failing provider surfaces its real error quickly instead
-    // of retrying with exponential backoff until the serverless function is
-    // killed at the platform time limit (which shows up as an endless spinner).
-    const maxRetries = 2
+    // Keep retries low so a slow or rate-limited provider can't retry with
+    // exponential backoff until the serverless function is killed at the platform
+    // time limit (which shows up as a 504 / endless spinner).
+    const maxRetries = 1
     let model: any
     if (config.provider === "openai") {
       model = new ChatOpenAI({
