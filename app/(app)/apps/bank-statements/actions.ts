@@ -59,7 +59,10 @@ export async function uploadStatementAction(formData: FormData): Promise<ActionS
       filename: file.name,
       path: relativeFilePath,
       mimetype: file.type,
-      isReviewed: false,
+      // Mark reviewed so the statement does NOT land in the Unsorted queue (where
+      // the single-shot receipt analyzer would try — and time out — on it). The
+      // bank-statements app analyzes it directly, page by page.
+      isReviewed: true,
       metadata: { size: file.size, lastModified: file.lastModified },
     })
 
