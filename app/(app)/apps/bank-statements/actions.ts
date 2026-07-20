@@ -150,6 +150,46 @@ export async function analyzeStatementChunkAction(
   }
 }
 
+export type StatementImage = { contentType: string; base64: string }
+
+// Analyzes page images that were already rendered by the BROWSER. The browser has
+// fonts and a canvas natively, so it renders real statements reliably — unlike
+// serverless pdf.js/canvas. The server only makes the (fast) Gemini vision call,
+// so this can't hit the function time limit on rendering.
+export async function analyzeStatementImagesAction(
+  images: StatementImage[]
+): Promise<ActionState<StatementChunk>> {
+  try {
+    const user = await getCurrentUser()
+    if (!images || images.length === 0) {
+      return { success: false, error: "No page images provided" }
+    }
+
+    const settings = await getSettings(user.id)
+    const attachments = images.map((img, i) => ({
+      filename: `page-${i + 1}`,
+      contentType: img.contentType,
+      base64: img.base64,
+    }))
+
+    const result = await analyzeBankStatement(attachments, settings)
+    if (!result.success) {
+      return {
+        success: false,
+        error:
+          result.error === "All LLM providers failed or are not configured"
+            ? "No AI provider is configured. Add an LLM API key in Settings → LLM (Google Gemini has a free tier), then try again."
+            : result.error || "Failed to analyze statement",
+      }
+    }
+
+    return { success: true, data: { rows: result.rows || [], currency: result.currency } }
+  } catch (error) {
+    console.error("Failed to analyze statement images:", error)
+    return { success: false, error: `Failed to analyze statement: ${error}` }
+  }
+}
+
 export async function saveStatementRowsAction(
   fileId: string,
   rows: BankStatementRow[],

@@ -9,14 +9,11 @@ import { Loader2, Trash2, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
-import { analyzeStatementChunkAction, saveStatementRowsAction, uploadStatementAction } from "../actions"
+import { analyzeStatementImagesAction, saveStatementRowsAction, uploadStatementAction } from "../actions"
+import { fileToBase64, loadPdfDocument, renderPageToImage } from "./render-pdf"
 
 type Phase = "idle" | "analyzing" | "review"
 
-// Pages analyzed per request. One page keeps each AI call well under the
-// serverless function time limit even for dense statements; the client stitches
-// the batches together.
-const PAGE_BATCH = 1
 const MAX_PAGES = 40
 
 export function BankStatementAnalyzer({
@@ -51,25 +48,15 @@ export function BankStatementAnalyzer({
         return
       }
 
-      const { fileId: uploadedId, pageCount, defaultCurrency: dc } = uploaded.data
-      setFileId(uploadedId)
+      setFileId(uploaded.data.fileId)
 
-      const totalPages = Math.min(pageCount, MAX_PAGES)
-      if (pageCount > MAX_PAGES) {
-        toast.warning(`Statement has ${pageCount} pages; analyzing the first ${MAX_PAGES}.`)
-      }
-      setProgress({ done: 0, total: totalPages })
-
-      // Analyze the statement one small page range at a time so each request
-      // stays under the serverless time limit, accumulating the rows as we go.
       const collected: BankStatementRow[] = []
-      let resolvedCurrency = dc || defaultCurrency
+      let resolvedCurrency = uploaded.data.defaultCurrency || defaultCurrency
       let anySucceeded = false
       let anyFailed = false
 
-      for (let start = 1; start <= totalPages; start += PAGE_BATCH) {
-        const end = Math.min(start + PAGE_BATCH - 1, totalPages)
-        const chunk = await analyzeStatementChunkAction(uploadedId, start, end)
+      const analyzeImages = async (images: { contentType: string; base64: string }[]) => {
+        const chunk = await analyzeStatementImagesAction(images)
         if (chunk.success && chunk.data) {
           anySucceeded = true
           collected.push(...chunk.data.rows)
@@ -77,9 +64,28 @@ export function BankStatementAnalyzer({
           setRows([...collected])
         } else {
           anyFailed = true
-          toast.error(chunk.error || `Failed to analyze pages ${start}-${end}`)
+          toast.error(chunk.error || "Failed to analyze a page")
         }
-        setProgress({ done: end, total: totalPages })
+      }
+
+      if (file.type === "application/pdf") {
+        // Render each page in the browser, then analyze it — one page per request.
+        const pdf = await loadPdfDocument(file)
+        const totalPages = Math.min(pdf.numPages, MAX_PAGES)
+        if (pdf.numPages > MAX_PAGES) {
+          toast.warning(`Statement has ${pdf.numPages} pages; analyzing the first ${MAX_PAGES}.`)
+        }
+        setProgress({ done: 0, total: totalPages })
+        for (let i = 1; i <= totalPages; i++) {
+          const image = await renderPageToImage(pdf, i)
+          await analyzeImages([image])
+          setProgress({ done: i, total: totalPages })
+        }
+      } else {
+        // Image statement — analyze it directly.
+        setProgress({ done: 0, total: 1 })
+        await analyzeImages([{ contentType: file.type || "image/jpeg", base64: await fileToBase64(file) }])
+        setProgress({ done: 1, total: 1 })
       }
 
       if (!anySucceeded) {
