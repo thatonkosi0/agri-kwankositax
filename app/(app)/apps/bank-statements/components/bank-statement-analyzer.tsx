@@ -9,8 +9,13 @@ import { Loader2, Trash2, Upload } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useRef, useState, useTransition } from "react"
 import { toast } from "sonner"
-import { analyzeStatementImagesAction, saveStatementRowsAction, uploadStatementAction } from "../actions"
-import { fileToBase64, loadPdfDocument, renderPageToStrips } from "./render-pdf"
+import {
+  analyzeStatementImagesAction,
+  analyzeStatementTextAction,
+  saveStatementRowsAction,
+  uploadStatementAction,
+} from "../actions"
+import { extractPageText, fileToBase64, loadPdfDocument } from "./render-pdf"
 
 type Phase = "idle" | "analyzing" | "review"
 
@@ -55,8 +60,7 @@ export function BankStatementAnalyzer({
       let anySucceeded = false
       let anyFailed = false
 
-      const analyzeImages = async (images: { contentType: string; base64: string }[]) => {
-        const chunk = await analyzeStatementImagesAction(images)
+      const collectChunk = (chunk: Awaited<ReturnType<typeof analyzeStatementTextAction>>) => {
         if (chunk.success && chunk.data) {
           anySucceeded = true
           collected.push(...chunk.data.rows)
@@ -69,25 +73,37 @@ export function BankStatementAnalyzer({
       }
 
       if (file.type === "application/pdf") {
-        // Render each page in the browser and slice it into strips so every AI
-        // request stays small (and fast). Overlapping strips are de-duplicated below.
+        // Extract each page's text in the browser and analyze the text (tiny and
+        // fast) — no image rendering, no vision latency, so no request can stall.
         const pdf = await loadPdfDocument(file)
         const totalPages = Math.min(pdf.numPages, MAX_PAGES)
         if (pdf.numPages > MAX_PAGES) {
           toast.warning(`Statement has ${pdf.numPages} pages; analyzing the first ${MAX_PAGES}.`)
         }
         setProgress({ done: 0, total: totalPages })
+        let anyText = false
         for (let i = 1; i <= totalPages; i++) {
-          const strips = await renderPageToStrips(pdf, i)
-          for (const strip of strips) {
-            await analyzeImages([strip])
+          const pageText = await extractPageText(pdf, i)
+          if (pageText.trim().length > 0) {
+            anyText = true
+            collectChunk(await analyzeStatementTextAction(pageText))
           }
           setProgress({ done: i, total: totalPages })
         }
+        if (!anyText) {
+          // No text layer on any page — almost certainly a scanned/image-only PDF.
+          toast.error(
+            "This PDF has no readable text (it looks scanned). Upload a photo or image export of the statement instead.",
+            { duration: 10000 }
+          )
+          setPhase("idle")
+          return
+        }
       } else {
-        // Image statement — analyze it directly.
+        // Image statement — no text to extract, so read it with vision directly.
         setProgress({ done: 0, total: 1 })
-        await analyzeImages([{ contentType: file.type || "image/jpeg", base64: await fileToBase64(file) }])
+        const image = { contentType: file.type || "image/jpeg", base64: await fileToBase64(file) }
+        collectChunk(await analyzeStatementImagesAction([image]))
         setProgress({ done: 1, total: 1 })
       }
 
@@ -96,22 +112,13 @@ export function BankStatementAnalyzer({
         return
       }
 
-      // Strips overlap, so the same row can be extracted twice — drop duplicates.
-      const seen = new Set<string>()
-      const deduped = collected.filter((r) => {
-        const key = `${r.date}|${(r.description || "").trim().toLowerCase()}|${r.amount}|${r.direction}`
-        if (seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-
-      if (deduped.length === 0) {
+      if (collected.length === 0) {
         toast.warning("No transactions were detected in this statement")
       } else if (anyFailed) {
         toast.warning("Some pages couldn't be analyzed — review the results and re-upload if needed.")
       }
       setCurrency(resolvedCurrency)
-      setRows(deduped)
+      setRows(collected)
       setPhase("review")
     } catch (error) {
       console.error("Bank statement analysis failed:", error)

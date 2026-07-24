@@ -1,7 +1,7 @@
 "use server"
 
 import { loadAttachmentsForAI } from "@/ai/attachments"
-import { analyzeBankStatement, BankStatementRow } from "@/ai/bank-statement"
+import { analyzeBankStatement, analyzeBankStatementText, BankStatementRow } from "@/ai/bank-statement"
 import { ActionState } from "@/lib/actions"
 import { getCurrentUser, isAiBalanceExhausted, isSubscriptionExpired } from "@/lib/auth"
 import {
@@ -186,6 +186,39 @@ export async function analyzeStatementImagesAction(
     return { success: true, data: { rows: result.rows || [], currency: result.currency } }
   } catch (error) {
     console.error("Failed to analyze statement images:", error)
+    return { success: false, error: `Failed to analyze statement: ${error}` }
+  }
+}
+
+// Analyzes the TEXT of one statement page, extracted in the browser by pdf.js.
+// Text-based PDFs (the vast majority of bank statements) parse in a couple of
+// seconds this way — no image rendering, no vision latency — so the request
+// can't approach the 60s function limit that the image path kept hitting.
+export async function analyzeStatementTextAction(
+  pageText: string
+): Promise<ActionState<StatementChunk>> {
+  try {
+    const user = await getCurrentUser()
+    // A blank page (or a scanned page with no text layer) simply yields no rows.
+    if (!pageText || pageText.trim().length === 0) {
+      return { success: true, data: { rows: [] } }
+    }
+
+    const settings = await getSettings(user.id)
+    const result = await analyzeBankStatementText(pageText, settings)
+    if (!result.success) {
+      return {
+        success: false,
+        error:
+          result.error === "All LLM providers failed or are not configured"
+            ? "No AI provider is configured. Add an LLM API key in Settings → LLM (Google Gemini has a free tier), then try again."
+            : result.error || "Failed to analyze statement",
+      }
+    }
+
+    return { success: true, data: { rows: result.rows || [], currency: result.currency } }
+  } catch (error) {
+    console.error("Failed to analyze statement text:", error)
     return { success: false, error: `Failed to analyze statement: ${error}` }
   }
 }
