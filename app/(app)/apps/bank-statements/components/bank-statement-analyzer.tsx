@@ -15,7 +15,7 @@ import {
   saveStatementRowsAction,
   uploadStatementAction,
 } from "../actions"
-import { extractPageText, fileToBase64, loadPdfDocument } from "./render-pdf"
+import { extractPageText, fileToBase64, loadPdfDocument, renderPageToStrips } from "./render-pdf"
 
 type Phase = "idle" | "analyzing" | "review"
 
@@ -60,12 +60,16 @@ export function BankStatementAnalyzer({
       let anySucceeded = false
       let anyFailed = false
 
+      const collectRows = (rows: BankStatementRow[], currency?: string) => {
+        anySucceeded = true
+        collected.push(...rows)
+        if (currency) resolvedCurrency = currency
+        setRows([...collected])
+      }
+
       const collectChunk = (chunk: Awaited<ReturnType<typeof analyzeStatementTextAction>>) => {
         if (chunk.success && chunk.data) {
-          anySucceeded = true
-          collected.push(...chunk.data.rows)
-          if (chunk.data.currency) resolvedCurrency = chunk.data.currency
-          setRows([...collected])
+          collectRows(chunk.data.rows, chunk.data.currency)
         } else {
           anyFailed = true
           toast.error(chunk.error || "Failed to analyze a page")
@@ -73,31 +77,53 @@ export function BankStatementAnalyzer({
       }
 
       if (file.type === "application/pdf") {
-        // Extract each page's text in the browser and analyze the text (tiny and
-        // fast) — no image rendering, no vision latency, so no request can stall.
         const pdf = await loadPdfDocument(file)
         const totalPages = Math.min(pdf.numPages, MAX_PAGES)
         if (pdf.numPages > MAX_PAGES) {
           toast.warning(`Statement has ${pdf.numPages} pages; analyzing the first ${MAX_PAGES}.`)
         }
+
+        // A scanned page has no text layer, so it must be read as an image. It's
+        // rendered to overlapping strips (each a bounded, sub-60s vision request);
+        // the overlap means a row can appear twice, so de-duplicate within the page.
+        const analyzeScannedPage = async (pageNumber: number) => {
+          const strips = await renderPageToStrips(pdf, pageNumber)
+          const pageRows: BankStatementRow[] = []
+          let pageCurrency: string | undefined
+          let pageOk = false
+          for (const strip of strips) {
+            const chunk = await analyzeStatementImagesAction([strip])
+            if (chunk.success && chunk.data) {
+              pageOk = true
+              pageRows.push(...chunk.data.rows)
+              if (chunk.data.currency) pageCurrency = chunk.data.currency
+            } else {
+              anyFailed = true
+              toast.error(chunk.error || "Failed to analyze a page")
+            }
+          }
+          if (!pageOk) return
+          const seen = new Set<string>()
+          const deduped = pageRows.filter((row) => {
+            const key = `${row.date}|${(row.description || "").trim().toLowerCase()}|${row.amount}|${row.direction}|${row.balance ?? ""}`
+            if (seen.has(key)) return false
+            seen.add(key)
+            return true
+          })
+          collectRows(deduped, pageCurrency)
+        }
+
         setProgress({ done: 0, total: totalPages })
-        let anyText = false
         for (let i = 1; i <= totalPages; i++) {
+          // Text-based pages (the common case) extract in the browser and analyze as
+          // tiny, fast text; only genuinely scanned pages fall back to vision.
           const pageText = await extractPageText(pdf, i)
           if (pageText.trim().length > 0) {
-            anyText = true
             collectChunk(await analyzeStatementTextAction(pageText))
+          } else {
+            await analyzeScannedPage(i)
           }
           setProgress({ done: i, total: totalPages })
-        }
-        if (!anyText) {
-          // No text layer on any page — almost certainly a scanned/image-only PDF.
-          toast.error(
-            "This PDF has no readable text (it looks scanned). Upload a photo or image export of the statement instead.",
-            { duration: 10000 }
-          )
-          setPhase("idle")
-          return
         }
       } else {
         // Image statement — no text to extract, so read it with vision directly.
