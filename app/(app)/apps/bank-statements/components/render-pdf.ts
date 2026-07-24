@@ -16,6 +16,25 @@ export type PdfDocument = Awaited<ReturnType<typeof pdfjsLib.getDocument>["promi
 // baselines are within this many PDF units of each other.
 const LINE_TOLERANCE = 3
 
+// A single AI request generates one JSON row per transaction, so a page with many
+// transactions can make even a tiny-text request run past the serverless time
+// limit. Cap how many statement lines go into one request so its output — and thus
+// its duration — stays bounded, regardless of how slow the configured model is.
+const MAX_LINES_PER_TEXT_CHUNK = 20
+
+// Splits already-extracted page text into groups of at most MAX_LINES_PER_TEXT_CHUNK
+// non-empty lines. Lines are whole transactions, so cutting at line boundaries never
+// splits a row and the chunks need no de-duplication (unlike overlapping image strips).
+export function splitTextIntoLineChunks(text: string): string[] {
+  const lines = text.split("\n").filter((line) => line.trim().length > 0)
+  if (lines.length <= MAX_LINES_PER_TEXT_CHUNK) return lines.length > 0 ? [lines.join("\n")] : []
+  const chunks: string[] = []
+  for (let i = 0; i < lines.length; i += MAX_LINES_PER_TEXT_CHUNK) {
+    chunks.push(lines.slice(i, i + MAX_LINES_PER_TEXT_CHUNK).join("\n"))
+  }
+  return chunks
+}
+
 // A tall page holds too many transactions for one AI vision call to finish inside
 // the serverless time limit, so scanned pages (which have no text layer and must
 // be read as images) are sliced into overlapping vertical strips.

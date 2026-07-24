@@ -30,6 +30,29 @@ async function categoryHints(userId: string): Promise<CategoryHint[]> {
   return categories.map((c) => ({ code: c.code, llm_prompt: c.llm_prompt }))
 }
 
+// Serverless functions are killed at 60s with an opaque 504. Return our own clear
+// error a little before that so a genuinely slow model surfaces a readable message
+// (and a hint) instead of the platform timeout.
+const ANALYZE_TIMEOUT_MS = 55_000
+const SLOW_MODEL_MESSAGE =
+  "This page took too long to analyze. Try again, or switch to a faster AI model (e.g. Google Gemini Flash) in Settings → LLM."
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(message)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error) => {
+        clearTimeout(timer)
+        reject(error)
+      }
+    )
+  })
+}
+
 export type StatementUpload = {
   fileId: string
   mimetype: string
@@ -181,7 +204,11 @@ export async function analyzeStatementImagesAction(
       base64: img.base64,
     }))
 
-    const result = await analyzeBankStatement(attachments, settings, await categoryHints(user.id))
+    const result = await withTimeout(
+      analyzeBankStatement(attachments, settings, await categoryHints(user.id)),
+      ANALYZE_TIMEOUT_MS,
+      SLOW_MODEL_MESSAGE
+    )
     if (!result.success) {
       return {
         success: false,
@@ -195,7 +222,8 @@ export async function analyzeStatementImagesAction(
     return { success: true, data: { rows: result.rows || [], currency: result.currency } }
   } catch (error) {
     console.error("Failed to analyze statement images:", error)
-    return { success: false, error: `Failed to analyze statement: ${error}` }
+    const message = error instanceof Error && error.message === SLOW_MODEL_MESSAGE ? error.message : `Failed to analyze statement: ${error}`
+    return { success: false, error: message }
   }
 }
 
@@ -214,7 +242,11 @@ export async function analyzeStatementTextAction(
     }
 
     const settings = await getSettings(user.id)
-    const result = await analyzeBankStatementText(pageText, settings, await categoryHints(user.id))
+    const result = await withTimeout(
+      analyzeBankStatementText(pageText, settings, await categoryHints(user.id)),
+      ANALYZE_TIMEOUT_MS,
+      SLOW_MODEL_MESSAGE
+    )
     if (!result.success) {
       return {
         success: false,
@@ -228,7 +260,8 @@ export async function analyzeStatementTextAction(
     return { success: true, data: { rows: result.rows || [], currency: result.currency } }
   } catch (error) {
     console.error("Failed to analyze statement text:", error)
-    return { success: false, error: `Failed to analyze statement: ${error}` }
+    const message = error instanceof Error && error.message === SLOW_MODEL_MESSAGE ? error.message : `Failed to analyze statement: ${error}`
+    return { success: false, error: message }
   }
 }
 

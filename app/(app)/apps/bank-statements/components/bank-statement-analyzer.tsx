@@ -15,7 +15,7 @@ import {
   saveStatementRowsAction,
   uploadStatementAction,
 } from "../actions"
-import { extractPageText, fileToBase64, loadPdfDocument, renderPageToStrips } from "./render-pdf"
+import { extractPageText, fileToBase64, loadPdfDocument, renderPageToStrips, splitTextIntoLineChunks } from "./render-pdf"
 
 type Phase = "idle" | "analyzing" | "review"
 
@@ -116,10 +116,14 @@ export function BankStatementAnalyzer({
         setProgress({ done: 0, total: totalPages })
         for (let i = 1; i <= totalPages; i++) {
           // Text-based pages (the common case) extract in the browser and analyze as
-          // tiny, fast text; only genuinely scanned pages fall back to vision.
+          // tiny, fast text; only genuinely scanned pages fall back to vision. Dense
+          // pages are split into small line-chunks so no single request generates
+          // enough rows to run past the serverless time limit.
           const pageText = await extractPageText(pdf, i)
           if (pageText.trim().length > 0) {
-            collectChunk(await analyzeStatementTextAction(pageText))
+            for (const textChunk of splitTextIntoLineChunks(pageText)) {
+              collectChunk(await analyzeStatementTextAction(textChunk))
+            }
           } else {
             await analyzeScannedPage(i)
           }
