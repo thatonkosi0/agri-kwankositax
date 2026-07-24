@@ -9,7 +9,15 @@ import { File, Transaction } from "@/prisma/client"
 import { Loader2, Upload, X } from "lucide-react"
 import { useState } from "react"
 
-export default function TransactionFiles({ transaction, files }: { transaction: Transaction; files: File[] }) {
+export default function TransactionFiles({
+  transaction,
+  files,
+  filePageCounts = {},
+}: {
+  transaction: Transaction
+  files: File[]
+  filePageCounts?: Record<string, number>
+}) {
   const [isUploading, setIsUploading] = useState(false)
 
   const handleDeleteFile = async (fileId: string) => {
@@ -42,7 +50,7 @@ export default function TransactionFiles({ transaction, files }: { transaction: 
           >
             <X className="h-4 w-4" />
           </Button>
-          <FilePreview file={file} />
+          <FilePreview file={file} pageCount={filePageCounts[file.id] ?? 1} />
         </Card>
       ))}
 

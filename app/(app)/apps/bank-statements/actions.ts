@@ -1,7 +1,7 @@
 "use server"
 
 import { loadAttachmentsForAI } from "@/ai/attachments"
-import { analyzeBankStatement, analyzeBankStatementText, BankStatementRow } from "@/ai/bank-statement"
+import { analyzeBankStatement, analyzeBankStatementText, BankStatementRow, CategoryHint } from "@/ai/bank-statement"
 import { ActionState } from "@/lib/actions"
 import { getCurrentUser, isAiBalanceExhausted, isSubscriptionExpired } from "@/lib/auth"
 import {
@@ -14,12 +14,21 @@ import {
 import { extractPdfPages, getPdfPageCount } from "@/lib/pdf-split"
 import { rasterizePdfBufferToImages } from "@/lib/previews/pdf"
 import { getStorage } from "@/lib/storage"
+import { getCategories } from "@/models/categories"
 import { createFile, getFileById, updateFile } from "@/models/files"
+import { getProjectByCode } from "@/models/projects"
 import { getSettings } from "@/models/settings"
-import { createTransaction, TransactionData, updateTransactionFiles } from "@/models/transactions"
+import { createTransactionsBulk, TransactionData } from "@/models/transactions"
 import { updateUser } from "@/models/users"
 import { randomUUID } from "crypto"
 import { revalidatePath } from "next/cache"
+
+// The category hints handed to the model: only categories that carry an
+// llm_prompt guide classification, but every code is a valid assignment target.
+async function categoryHints(userId: string): Promise<CategoryHint[]> {
+  const categories = await getCategories(userId)
+  return categories.map((c) => ({ code: c.code, llm_prompt: c.llm_prompt }))
+}
 
 export type StatementUpload = {
   fileId: string
@@ -172,7 +181,7 @@ export async function analyzeStatementImagesAction(
       base64: img.base64,
     }))
 
-    const result = await analyzeBankStatement(attachments, settings)
+    const result = await analyzeBankStatement(attachments, settings, await categoryHints(user.id))
     if (!result.success) {
       return {
         success: false,
@@ -205,7 +214,7 @@ export async function analyzeStatementTextAction(
     }
 
     const settings = await getSettings(user.id)
-    const result = await analyzeBankStatementText(pageText, settings)
+    const result = await analyzeBankStatementText(pageText, settings, await categoryHints(user.id))
     if (!result.success) {
       return {
         success: false,
@@ -240,25 +249,52 @@ export async function saveStatementRowsAction(
       return { success: false, error: "No rows to save" }
     }
 
-    let created = 0
+    const settings = await getSettings(user.id)
+    // Foreign keys reject any category code that isn't NULL or one the user owns,
+    // so resolve each row's suggested category against the real set once up front.
+    const validCategoryCodes = new Set((await getCategories(user.id)).map((c) => c.code))
+    const defaultCategory =
+      settings.default_category && validCategoryCodes.has(settings.default_category)
+        ? settings.default_category
+        : null
+    const resolveCategory = (suggested?: string): string | null =>
+      suggested && validCategoryCodes.has(suggested) ? suggested : defaultCategory
+
+    // A project may only be assigned if it exists; an unknown code would fail the
+    // whole batch on the foreign key, so drop it to null when it doesn't resolve.
+    const validProject = projectCode && (await getProjectByCode(projectCode)) ? projectCode : null
+
+    const toSave: TransactionData[] = []
     for (const row of rows) {
       const amount = Number(row.amount)
       if (!Number.isFinite(amount)) continue
 
-      const data: TransactionData = {
+      // The AI is asked for YYYY-MM-DD, but guard against an unparseable value —
+      // an Invalid Date would fail the whole insert.
+      let issuedAt: Date | null = null
+      if (row.date) {
+        const parsed = new Date(row.date)
+        if (!Number.isNaN(parsed.getTime())) issuedAt = parsed
+      }
+
+      toSave.push({
         name: row.description || "Bank transaction",
         total: Math.round(Math.abs(amount) * 100),
         currencyCode: currency,
-        issuedAt: row.date ? new Date(row.date) : null,
+        issuedAt,
         type: row.direction === "income" ? "income" : "expense",
-        projectCode: projectCode || null,
+        categoryCode: resolveCategory(row.category),
+        projectCode: validProject,
         note: "Imported from bank statement",
-      }
-
-      const transaction = await createTransaction(user.id, data)
-      await updateTransactionFiles(transaction.id, user.id, [fileId])
-      created++
+        files: [fileId],
+      })
     }
+
+    if (toSave.length === 0) {
+      return { success: false, error: "No valid transactions to save" }
+    }
+
+    const created = await createTransactionsBulk(user.id, toSave)
 
     // The statement itself is now processed — take it out of the unsorted queue.
     await updateFile(fileId, user.id, { isReviewed: true })

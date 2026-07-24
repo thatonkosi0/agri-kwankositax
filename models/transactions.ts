@@ -207,6 +207,31 @@ export const createTransaction = async (userId: string, data: TransactionData): 
   return newTransaction
 }
 
+// Inserts many plain transactions in a single query. Used by bank-statement
+// import, where every row maps to standard columns only (no user-defined extra
+// fields) — one round trip instead of two per row, so a large statement can't
+// exhaust the serverless time limit mid-save. Category/project codes must already
+// be validated (or null); invalid foreign keys would fail the whole batch.
+export const createTransactionsBulk = async (userId: string, rows: TransactionData[]): Promise<number> => {
+  if (rows.length === 0) return 0
+  const result = await prisma.transaction.createMany({
+    data: rows.map((row) => ({
+      userId,
+      name: (row.name as string | null) ?? null,
+      total: (row.total as number | null) ?? null,
+      currencyCode: (row.currencyCode as string | null) ?? null,
+      type: (row.type as string | null) ?? "expense",
+      categoryCode: (row.categoryCode as string | null) ?? null,
+      projectCode: (row.projectCode as string | null) ?? null,
+      issuedAt: (row.issuedAt as Date | null) ?? null,
+      note: (row.note as string | null) ?? null,
+      files: (row.files as string[] | undefined) ?? [],
+      items: [],
+    })),
+  })
+  return result.count
+}
+
 export const updateTransaction = async (id: string, userId: string, data: TransactionData): Promise<Transaction> => {
   // Collaborative: allow editing any transaction the user can see (own or in an assigned project).
   const existing = await getTransactionById(id, userId)

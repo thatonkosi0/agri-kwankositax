@@ -7,7 +7,8 @@ import { incompleteTransactionFields } from "@/lib/stats"
 import { getCategories } from "@/models/categories"
 import { getCurrencies } from "@/models/currencies"
 import { getFields } from "@/models/fields"
-import { getFilesByTransactionId } from "@/models/files"
+import { getFilePageCount, getFilesByTransactionId } from "@/models/files"
+import { getUserById } from "@/models/users"
 import { getProjects } from "@/models/projects"
 import { getSettings } from "@/models/settings"
 import { getTransactionById } from "@/models/transactions"
@@ -23,6 +24,18 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
   }
 
   const files = await getFilesByTransactionId(transactionId, user.id)
+  // Preview-able page count per file, so multi-page PDFs (e.g. bank statements)
+  // show every page, not just the first. Files may be owned by another member on
+  // a shared project, so resolve each file's storage owner for the page count.
+  const ownerCache = new Map<string, typeof user | null>([[user.id, user]])
+  const filePageCounts: Record<string, number> = {}
+  for (const file of files) {
+    if (!ownerCache.has(file.userId)) {
+      ownerCache.set(file.userId, await getUserById(file.userId))
+    }
+    const owner = ownerCache.get(file.userId)
+    filePageCounts[file.id] = owner ? await getFilePageCount(owner, file) : 1
+  }
   const categories = await getCategories(user.id)
   const currencies = await getCurrencies(user.id)
   const settings = await getSettings(user.id)
@@ -76,7 +89,7 @@ export default async function TransactionPage({ params }: { params: Promise<{ tr
       </Card>
 
       <div className="w-1/2 max-w-[400px] space-y-4">
-        <TransactionFiles transaction={transaction} files={files} />
+        <TransactionFiles transaction={transaction} files={files} filePageCounts={filePageCounts} />
       </div>
     </div>
   )

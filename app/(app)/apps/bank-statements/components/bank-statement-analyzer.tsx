@@ -166,15 +166,22 @@ export function BankStatementAnalyzer({
   const save = () => {
     if (!fileId) return
     startSaving(async () => {
-      const result = await saveStatementRowsAction(fileId, rows, currency, projectCode || null)
-      if (result.success && result.data) {
-        toast.success(`${result.data.created} transactions created`)
-        setPhase("idle")
-        setRows([])
-        setFileId(null)
-        router.push("/transactions")
-      } else {
-        toast.error(result.error || "Failed to save transactions")
+      try {
+        const result = await saveStatementRowsAction(fileId, rows, currency, projectCode || null)
+        if (result.success && result.data) {
+          toast.success(`${result.data.created} transactions created`)
+          setPhase("idle")
+          setRows([])
+          setFileId(null)
+          router.push("/transactions")
+        } else {
+          toast.error(result.error || "Failed to save transactions", { duration: 8000 })
+        }
+      } catch (error) {
+        // A rejected action (e.g. a timeout on a very large statement) must not
+        // bubble up to the global error boundary — surface it as a toast instead.
+        console.error("Failed to save statement transactions:", error)
+        toast.error("Couldn't save the transactions. Please try again.", { duration: 8000 })
       }
     })
   }

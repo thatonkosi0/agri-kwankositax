@@ -2,7 +2,9 @@
 
 import { prisma } from "@/lib/db"
 import { fullKeyForFile } from "@/lib/files"
+import { getPdfPageCount } from "@/lib/pdf-split"
 import { getStorage } from "@/lib/storage"
+import { File, User } from "@/prisma/client"
 import { cache } from "react"
 import { getAssignedProjectCodes } from "./projects"
 import { getTransactionById } from "./transactions"
@@ -87,6 +89,29 @@ export const updateFile = async (id: string, userId: string, data: any) => {
     where: { id, userId },
     data,
   })
+}
+
+// Number of preview-able pages for a file (1 for images; the real page count for
+// PDFs). Cached into the file's metadata after the first read so multi-page
+// previews don't re-parse the PDF on every transaction view. `owner` is the file's
+// storage owner (may differ from the viewer for shared project files).
+export const getFilePageCount = async (owner: User, file: File): Promise<number> => {
+  if (file.mimetype !== "application/pdf") return 1
+
+  const metadata = (file.metadata && typeof file.metadata === "object" ? file.metadata : {}) as Record<string, unknown>
+  if (typeof metadata.pageCount === "number" && metadata.pageCount > 0) {
+    return metadata.pageCount
+  }
+
+  try {
+    const bytes = await getStorage().read(fullKeyForFile(owner, file))
+    const pageCount = await getPdfPageCount(bytes)
+    // Persist under the owner so the count is shared across members who view it.
+    await updateFile(file.id, owner.id, { metadata: { ...metadata, pageCount } })
+    return pageCount
+  } catch {
+    return 1 // fall back to a single page if the PDF can't be parsed
+  }
 }
 
 export const deleteFile = async (id: string, userId: string) => {
